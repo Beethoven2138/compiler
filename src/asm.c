@@ -32,6 +32,11 @@ void init_registers(char *file_name)
 	registers[10] = "RCX";
 	registers[11] = "RAX";
 
+	spec_registers[0] = "RSP";
+	spec_registers[1] = "RBP";
+	spec_registers[2] = "RDI";
+	spec_registers[3] = "RSI";
+
 	fout = (File*)malloc(sizeof(File));
 
 	fout->file = fopen(file_name, "w");
@@ -42,6 +47,10 @@ void init_registers(char *file_name)
 	fout->text[1] = 0;
 	fout->index = 0;
 	fout->str_len = 1;
+
+	write_strn("section .text\n", 14);
+	writec(9);
+	write_strn("global main\n", 12);
 }
 
 REGISTER reg_alloc(void)
@@ -89,6 +98,41 @@ void MOV_R64I(int dest, int src)
 		write_str(tmp);
 		writec('\n');
 	}
+}
+
+void MOV_R64OFF(int dest, int off)
+{
+	writec(9);
+	write_strn("MOV ", 4);
+	write_str(registers[dest]);
+	write_strn(", ", 2);
+	char tmp[100];
+	sprintf(tmp, "[RBP+%d]", off);
+	write_str(tmp);
+	writec('\n');
+}
+
+void MOV_OFFI(int off, int src)
+{
+	writec(9);
+	write_strn("MOV ", 4);
+	char tmp[100];
+	sprintf(tmp, "[RBP+%d], ", off);
+	write_str(tmp);
+	sprintf(tmp, "%d", src);
+	write_str(tmp);
+	writec('\n');
+}
+
+void MOV_OFFR64(int off, int src)
+{
+	writec(9);
+	write_strn("MOV ", 4);
+	char tmp[100];
+	sprintf(tmp, "[RBP+%d], ", off);
+	write_str(tmp);
+	write_str(registers[src]);
+	writec('\n');
 }
 
 void ADD_R64R64(int dest, int src)
@@ -318,6 +362,60 @@ void OR_R64R64(REGISTER reg1, REGISTER reg2)
 	write_strn(", ", 2);
 	write_str(registers[reg2]);
 	writec('\n');
+}
+
+void INC(REGISTER dest)
+{
+	writec(9);
+	write_strn("INC ", 4);
+	write_str(registers[dest]);
+	writec('\n');
+}
+
+void DEC(REGISTER dest)
+{
+	writec(9);
+	write_strn("DEC ", 4);
+	write_str(registers[dest]);
+	writec('\n');
+}
+
+/*
+The function calling conventions that this compiler uses are
+the ones stated in the book "Modern x86 Assembly Language Programming".
+Function arguments can be accessed by:
+[RBP + offset];
+Start at [RBP + 8]; since the first 8 bytes hold the return address.
+*/
+
+void func_prolog(void)
+{
+	//These registers must be preserved
+	writec(9);
+	write_strn("PUSH RBP\n", 9);
+	writec(9);
+	write_strn("MOV RBP, RSP\n", 13);
+	writec(9);
+	write_strn("PUSH RBX\n", 9);
+}
+
+void func_epilog(void)
+{
+	write_strn("POP RBX\n", 8);
+	writec(9);
+	write_strn("POP RBP\n", 8);
+	writec(9);
+	write_strn("RET\n", 4);
+}
+
+void EXIT(void)
+{
+	writec(9);
+	write_strn("MOV RAX, 60\n", 12);
+	writec(9);
+	write_strn("MOV RDI, 0\n", 11);
+	writec(9);
+	write_strn("syscall\n", 8);
 }
 
 void write_to_file(void)
