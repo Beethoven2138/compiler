@@ -80,11 +80,12 @@ char* read_word(int index)
 	for (i = 0; i < 20; i++)
 	{
 		c = fin->text[index++];
-		if (c == ' ' || c == '\n' || c == '\r' || c == EOF || c == ';'/* || c == ']'
+		if (c == ' ' || c == '\n' || c == '\r' || c == EOF || c == ';' || c == '(' || c == ')'/* || c == ']'
 		    || c == '[' || c == '}' || c == '{' || c == '|' || c == '\' || c == '&'*/)
 		//TODO: Finish this
 		{
 			fin->index = index-1;
+			str[i] = 0;
 			break;
 		}
 		str[i] = c;
