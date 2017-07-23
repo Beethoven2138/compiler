@@ -16,6 +16,7 @@ typedef struct
 	int type;
 
 	OPERAND op;
+
 	//TODO: add conditions for when all the registers are used up
 } VARIABLE;
 
@@ -36,12 +37,13 @@ typedef struct FUNCTION
 {
 	char *name;
 	VARIABLE *vars;
+	int var_count;
 	int type;
 } FUNCTION;
 
 typedef struct
 {
-	FUNCTION *funcs;
+	FUNCTION **funcs;
 	int length;
 	int index;
 } FUNCTION_LIST;
@@ -51,16 +53,20 @@ static SCOPE *current_scope;
 
 static FUNCTION_LIST func_list;
 
-void parse_factor(OPERAND *dest);
-void parse_term(OPERAND *dest);
-void parse_expression(OPERAND *dest);
-void parse_relation(OPERAND *dest);
-void parse_logic(OPERAND *dest);
+static void MOVE(OPERAND dest, OPERAND src);
 
-void parse_declaration(void);
-void parse_statement(void);
+static void parse_factor(OPERAND *dest);
+static void parse_term(OPERAND *dest);
+static void parse_expression(OPERAND *dest);
+static void parse_relation(OPERAND *dest);
+static void parse_logic(OPERAND *dest);
+static void parse_assignment(OPERAND *dest);
 
-void parse_scope(void);
+
+static void parse_declaration(void);
+void parse_statement(int stop);
+
+static void parse_scope(void);
 
 static void add_variable(VARIABLE var, SCOPE *scope);
 
@@ -75,10 +81,15 @@ static OPERAND *find_var(SCOPE *scope, char *id);
 
 static OPERAND *find_var_in_scope(SCOPE scope, char *id);
 
-static void add_function(FUNCTION func);
-static FUNCTION* create_function(char *name, VARIABLE *vars, int type);
+static void add_function(FUNCTION *func);
+static FUNCTION* create_function(char *name, VARIABLE *vars, int var_count, int type);
 
 static FUNCTION* find_function(char *name);
 static void free_functions(void);
+static void add_funcvar(FUNCTION *func, VARIABLE var);
+
+static void call_function(char *func_name);
+
+static void parse_loop(void);
 
 #endif
