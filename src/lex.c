@@ -58,7 +58,7 @@ redo:
 	case '-':
 	case '*':
 	case '/':
-	case '^':
+	case '%':
 	{
 		token.class = TOPERATOR;
 		token.value = c;
@@ -125,8 +125,8 @@ redo:
 		else
 		{
 			unreadc();
-			token.class = '<';
-			token.value = '<';
+			token.class = TOPERATOR;
+			token.value = LESS;
 		}
 		break;
 	}
@@ -140,8 +140,8 @@ redo:
 		else
 		{
 			unreadc();
-			token.class = '>';
-			token.value = '>';
+			token.class = TOPERATOR;
+			token.value = GREATER;
 		}
 		break;
 	}
@@ -153,10 +153,83 @@ redo:
 			token.class = TKEYWORD;
 			token.value = UINT64_T;
 		}
-		else
+		else if (readc() != '(')
 		{
 			token.class = TIDENTIFIER;
 			token.id = str;
+			unreadc();
+		}
+		else
+		{
+			token.class = TFUNCTION;
+			token.id = str;
+			unreadc();
+		}
+		break;
+	}
+	case 'r':
+	{
+		char *str = read_word(fin->index-1);
+		if (!strncmp("return", str, 6))
+		{
+			token.class = TKEYWORD;
+			token.value = RETURN;
+		}
+		else if (readc() != '(')
+		{
+			token.class = TIDENTIFIER;
+			token.id = str;
+			unreadc();
+		}
+		else
+		{
+			token.class = TFUNCTION;
+			token.id = str;
+			unreadc();
+		}
+		break;
+	}
+	case 'b':
+	{
+		char *str = read_word(fin->index-1);
+		if (!strncmp("break", str, 5))
+		{
+			token.class = TKEYWORD;
+			token.value = BREAK;
+		}
+		else if (readc() != '(')
+		{
+			token.class = TIDENTIFIER;
+			token.id = str;
+			unreadc();
+		}
+		else
+		{
+			token.class = TFUNCTION;
+			token.id = str;
+			unreadc();
+		}
+		break;
+	}
+	case 'c':
+	{
+		char *str = read_word(fin->index-1);
+		if (!strncmp("continue", str, 8))
+		{
+			token.class = TKEYWORD;
+			token.value = CONTINUE;
+		}
+		else if (readc() != '(')
+		{
+			token.class = TIDENTIFIER;
+			token.id = str;
+			unreadc();
+		}
+		else
+		{
+			token.class = TFUNCTION;
+			token.id = str;
+			unreadc();
 		}
 		break;
 	}
@@ -168,10 +241,61 @@ redo:
 			token.class = TKEYWORD;
 			token.value = IF;
 		}
-		else
+		else if (readc() != '(')
 		{
 			token.class = TIDENTIFIER;
 			token.id = str;
+			unreadc();
+		}
+		else
+		{
+			token.class = TFUNCTION;
+			token.id = str;
+			unreadc();
+		}
+		break;
+	}
+	case 'f':
+	{
+		char *str = read_word(fin->index-1);
+		if (!strncmp("for", str, 3))//returns 0 on success
+		{
+			token.class = TKEYWORD;
+			token.value = FOR;
+		}
+		else if (readc() != '(')
+		{
+			token.class = TIDENTIFIER;
+			token.id = str;
+			unreadc();
+		}
+		else
+		{
+			token.class = TFUNCTION;
+			token.id = str;
+			unreadc();
+		}
+		break;
+	}
+	case 'w':
+	{
+		char *str = read_word(fin->index-1);
+		if (!strncmp("while", str, 5))
+		{
+			token.class = TKEYWORD;
+			token.value = WHILE;
+		}
+		else if (readc() != '(')
+		{
+			token.class = TIDENTIFIER;
+			token.id = str;
+			unreadc();
+		}
+		else
+		{
+			token.class = TFUNCTION;
+			token.id = str;
+			unreadc();
 		}
 		break;
 	}
@@ -183,15 +307,46 @@ redo:
 			token.class = TKEYWORD;
 			token.value = ELSE;
 		}
-		else if (str[strlen(str) - 2] != '(')
+		else if (readc() != '(')
 		{
 			token.class = TIDENTIFIER;
 			token.id = str;
+			unreadc();
 		}
 		else
 		{
 			token.class = TFUNCTION;
 			token.id = str;
+			unreadc();
+		}
+		break;
+	}
+	case 'm':
+	case 'a':
+	case 'd':
+	case 'h':
+	case 'j':
+	case 'k':
+	case 'o':
+	case 'p':
+	case 'q':
+	case 't':
+	case 'x':
+	case 'y':
+	case 'z':
+	{
+		char *str = read_word(fin->index-1);
+		if (readc() != '(')
+		{
+			token.class = TIDENTIFIER;
+			token.id = str;
+			unreadc();
+		}
+		else
+		{
+			token.class = TFUNCTION;
+			token.id = str;
+			unreadc();
 		}
 		break;
 	}
@@ -203,10 +358,17 @@ redo:
 			token.class = TKEYWORD;
 			token.value = VOID;
 		}
-		else
+		else if (readc() != '(')
 		{
 			token.class = TIDENTIFIER;
 			token.id = str;
+			unreadc();
+		}
+		else
+		{
+			token.class = TFUNCTION;
+			token.id = str;
+			unreadc();
 		}
 		break;
 	}
