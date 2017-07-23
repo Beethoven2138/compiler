@@ -18,7 +18,7 @@ int main(int argc, char *argv[])
 
 	init_scope();
 
-	parse_statement();
+	parse_statement(TEOF);
 
 	write_to_file();
 
