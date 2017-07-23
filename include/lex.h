@@ -33,6 +33,11 @@ enum
 	NOT,
 	IF,
 	ELSE,
+	RETURN,
+	WHILE,
+	FOR,
+	BREAK,
+	CONTINUE,
 };
 
 enum
@@ -50,7 +55,7 @@ enum
 	VOID,
 	CHAR,
 	SHORT,
-};//DATA TYPES
+};//Data types
 
 typedef struct
 {
