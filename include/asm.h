@@ -43,8 +43,17 @@ enum
 
 enum
 {
+	RSP,
+	RBP,
+	RDI,
+	RSI,
+};
+
+enum
+{
 	TIMMEDIATE,
 	TREGISTER,
+	TOFFSET,
 };
 
 typedef struct
@@ -58,6 +67,7 @@ typedef struct
 bool reg_gen[8];
 
 const char *registers[12];
+const char *spec_registers[4];
 
 void init_registers(char *file_name);
 
@@ -66,6 +76,11 @@ void reg_free(REGISTER reg);
 
 void MOV_R64R64(int dest, int src);
 void MOV_R64I(int dest, int src);
+
+void MOV_R64OFF(int dest, int off);
+void MOV_OFFR64(int off, int src);
+void MOV_OFFI(int off, int src);
+
 
 void ADD_R64R64(int dest, int src);
 void ADD_R64I(int dest, int src);
@@ -98,6 +113,17 @@ void XOR_R64I(REGISTER reg1, int immediate);
 void AND_R64R64(REGISTER reg1, REGISTER reg2);
 
 void OR_R64R64(REGISTER reg1, REGISTER reg2);
+
+void INC(REGISTER dest);
+void DEC(REGISTER dest);
+
+//used at the start of a function
+void func_prolog(void);
+//used at the end of a function
+void func_epilog(void);
+
+
+void EXIT(void);
 
 void write_to_file(void);
 
