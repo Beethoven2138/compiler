@@ -6,24 +6,11 @@
 #include <unistd.h>
 #include <stdbool.h>
 
+#include <file.h>
+#include <lex.h>
+
 typedef char REGISTER;
 
-/*enum
-{
-	RAX,
-	RCX,
-	RDX,
-	RBX,
-	R8,
-	R9,
-	R10,
-	R11,
-	R12,
-	R13,
-	R14,
-	R15,
-	FULL,
-};*/
 
 enum
 {
@@ -54,13 +41,46 @@ enum
 	TIMMEDIATE,
 	TREGISTER,
 	TOFFSET,
+	TSEG_DATA,
+	TSEG_BSS,
 };
 
-typedef struct
+enum
 {
+	BYTE = 1,
+	WORD = 2,
+	DWORD = 4,
+	QWORD = 8,
+};
+
+typedef struct OPERAND
+{
+	/*says if its bss, data, register etc*/
 	int type;
-	int value;
+
+	/*8-bit, 16-bit etc*/
+	int data_type;
+
+	/*holds the register being used
+	  if no register is used, value = -1
+	*/
+	char *id;
+
+	union
+	{
+		int value;
+
+		struct
+		{
+			int off_type;
+			int off;
+			char* base_ptr;
+		};
+	};
 } OPERAND;
+
+
+
 
 //OPERAND operand;
 
@@ -69,31 +89,45 @@ bool reg_gen[8];
 const char *registers[12];
 const char *spec_registers[4];
 
+const char *registers32[12];
+const char *registers16[12];
+const char *registers8[12];
+
 void init_registers(char *file_name);
+
+void init_data(BUFFER *text);
+void init_bss(BUFFER *text);
 
 REGISTER reg_alloc(void);
 void reg_free(REGISTER reg);
 
-void MOV_R64R64(int dest, int src);
-void MOV_R64I(int dest, int src);
+void MOV_R64R64(int dest, int src, int size);
+void MOV_R64I(int dest, int src, int size);
 
-void MOV_R64OFF(int dest, int off);
-void MOV_OFFR64(int off, int src);
-void MOV_OFFI(int off, int src);
+void MOV_R64OFF(int dest, int off, int off_type, char *base_ptr, int size);
+void MOV_OFFR64(int off, int off_type, char *base_ptr, int src, int size);
+void MOV_OFFI(int off, int off_type, char *base_ptr, int src, int size);
 
+void MOV_DR64(char *str, int src, int size);
+void MOV_R64D(int dest, char *src, int size);
+void MOV_DI(char *str, int src, int size);
 
-void ADD_R64R64(int dest, int src);
-void ADD_R64I(int dest, int src);
+void MOV_R64ADR(int dest, char *str, int size);
 
-void SUB_R64R64(int dest, int src);
-void SUB_R64I(int dest, int src);
+void LEA(int dest, int off, int off_type, char *base_ptr, int size);
 
-void MUL_R64(int src);
+void ADD_R64R64(int dest, int src, int size1, int size2);
+void ADD_R64I(int dest, int src, int size);
 
-void DIV_R64(int src);
+void SUB_R64R64(int dest, int src, int size1, int size2);
+void SUB_R64I(int dest, int src, int size);
 
-void PUSH(int src);
-void POP(int dest);
+void MUL_R64(int src, int size);
+
+void DIV_R64(int src, int size);
+
+void PUSH(int src, int size);
+void POP(int dest, int size);
 
 void JMP(char *routine);
 void JZ(char *routine);//if 0
@@ -104,18 +138,18 @@ void JA(char *routine);//if greater than (unsigned)
 void JB(char *routine);//if less than (unsigned)
 void JE(char *routine);//if ==
 void JNE(char *routine);//if !=
-void CMP(REGISTER op1, OPERAND op2);//Left to right
+void CMP(REGISTER op1, OPERAND op2, int size);//Left to right
 void CALL(char *routine);
 
-void XOR_R64R64(REGISTER reg1, REGISTER reg2);
-void XOR_R64I(REGISTER reg1, int immediate);
+void XOR_R64R64(REGISTER reg1, REGISTER reg2, int size1,  int size2);
+void XOR_R64I(REGISTER reg1, int immediate, int size);
 
-void AND_R64R64(REGISTER reg1, REGISTER reg2);
+void AND_R64R64(REGISTER reg1, REGISTER reg2, int size1, int size2);
 
-void OR_R64R64(REGISTER reg1, REGISTER reg2);
+void OR_R64R64(REGISTER reg1, REGISTER reg2, int size1, int size2);
 
-void INC(REGISTER dest);
-void DEC(REGISTER dest);
+void INC(REGISTER dest, int size);
+void DEC(REGISTER dest, int size);
 
 //used at the start of a function
 void func_prolog(void);
@@ -125,6 +159,13 @@ void func_epilog(void);
 
 void EXIT(void);
 
+void add_data(char *name, int type, int value);
+void add_bss(char *name, int type, int size);
+
+
 void write_to_file(void);
+
+
+int sizeof_data(int data_type);
 
 #endif
