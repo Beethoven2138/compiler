@@ -8,8 +8,10 @@ File *make_file(char *name)
 	file->file = fopen(name, "r");
 	file->st = (struct stat*)malloc(sizeof(struct stat));
 	stat(file->name, file->st);
-	file->text = malloc(file->st->st_size);
-	file->str_len = file->st->st_size;
+	file->buff = (BUFFER*)malloc(sizeof(BUFFER));
+	file->buff->text = malloc(file->st->st_size);
+	file->buff->index = 0;
+	file->buff->str_len = file->st->st_size;
 
 	int c;
 	bool white_space = false;
@@ -24,7 +26,7 @@ File *make_file(char *name)
 		}
 		if (c == EOF)
 		{
-			file->text[file->index] = 0;//null-termination
+			file->buff->text[file->buff->index] = 0;//null-termination
 			break;
 		}
 		if (c == ' ' || c == 9/*tab*/)
@@ -37,39 +39,40 @@ File *make_file(char *name)
 		{
 			if (new_line)
 			{
-				file->text[file->index++] = '\n';
+				file->buff->text[file->buff->index++] = '\n';
 				new_line = false;
 			}
 			if (white_space)
 			{
-				file->text[file->index++] = ' ';
+				file->buff->text[file->buff->index++] = ' ';
 				white_space = false;
 			}
-			file->text[file->index++] = c;
+			file->buff->text[file->buff->index++] = c;
 
-			if (file->index >= file->str_len)
+			if (file->buff->index >= file->buff->str_len)
 			{
-				file->text = realloc(file->text, file->str_len += 5);
-				assert(file->text);
+				file->buff->text = realloc(file->buff->text, file->buff->str_len += 5);
+				assert(file->buff->text);
 			}
 		}
 	}
-	file->str_len = file->index + 1;
-	file->index = 0;
+	file->buff->str_len = file->buff->index + 1;
+	file->buff->index = 0;
 	//fclose(file->file);
+	return file;
 }
 
 char readc(void)
 {
-	if (fin->index < fin->str_len && fin->text[fin->index] != 0)
-		return fin->text[fin->index++];
+	if (fin->buff->index < fin->buff->str_len && fin->buff->text[fin->buff->index] != 0)
+		return fin->buff->text[fin->buff->index++];
 	else
 		return EOF;
 }
 
 void unreadc(void)
 {
-	fin->index--;
+	fin->buff->index--;
 }
 
 char* read_word(int index)
@@ -79,12 +82,12 @@ char* read_word(int index)
 	int i;
 	for (i = 0; i < 20; i++)
 	{
-		c = fin->text[index++];
-		if (c == ' ' || c == '\n' || c == '\r' || c == EOF || c == ';' || c == '(' || c == ')'/* || c == ']'
-		    || c == '[' || c == '}' || c == '{' || c == '|' || c == '\' || c == '&'*/)
+		c = fin->buff->text[index++];
+		if (c == ' ' || c == '\n' || c == '\r' || c == EOF || c == ';' || c == '(' || c == ')'
+		    || c == ']' || c == '[')
 		//TODO: Finish this
 		{
-			fin->index = index-1;
+			fin->buff->index = index-1;
 			str[i] = 0;
 			break;
 		}
@@ -97,28 +100,39 @@ char* read_word(int index)
 	return str;
 }
 
-void writec(char c)
+void writec(char c, int section)
 {
-	if (fout->index == fout->str_len)
-		fout->text = realloc(fout->text, ++fout->str_len + 1/*NULL-terminator byte :D*/);
+	if (fout->buff[section].index == fout->buff[section].str_len)
+		fout->buff[section].text = realloc(fout->buff[section].text, ++fout->buff[section].str_len + 1);
 
-	fout->text[fout->index++] = c;
+	//char *text = fout->buff[section].text;
+	//fout->buff[section].text[fout->buff[section].index] = c;
+/*
+	if (fout->buff[section].index != 0)
+		fout->buff[section].text = (char*)realloc(fout->buff[section].text, ++(fout->buff[section].index) + 1);
+	fout->buff[section].text[fout->buff[section].index] = c;
+*/
+	fout->buff[section].text[fout->buff[section].index++] = c;
 }
 
-void write_strn(const char *str, int len)
+void write_strn(const char *str, int len, int section)
 {
 	assert(str);
+	char *text = fout->buff[section].text;
+	fout->buff[section].text = (char*)realloc(fout->buff[section].text, len + fout->buff[section].index);
 	for (int i = 0; i < len; i++)
 	{
-		writec(str[i]);
+		writec(str[i], section);
+		//fout->buff[section].text[fout->buff[section].index++] = *(str++);
 	}
+	//fout->buff[section].text[fout->buff[section].index++]++;
 }
 
-void write_str(const char *str)
+void write_str(const char *str, int section)
 {
 	assert(str);
 	for (int i = 0; i < strlen(str); i++)
 	{
-		writec(str[i]);
+		writec(str[i], section);
 	}
 }
