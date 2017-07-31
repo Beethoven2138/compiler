@@ -2,6 +2,9 @@
 #include <lex.h>
 #include <file.h>
 
+
+
+
 static void MOVE(OPERAND dest, OPERAND src)
 {
 	if (dest.type == src.type && dest.value == src.value)
@@ -12,38 +15,88 @@ static void MOVE(OPERAND dest, OPERAND src)
 	else if (dest.type == TREGISTER)
 	{
 		if (src.type == TIMMEDIATE)
-			MOV_R64I(dest.value, src.value);
+			MOV_R64I(dest.value, src.value, sizeof_data(dest.data_type));
 		else if (src.type == TREGISTER)
-			MOV_R64R64(dest.value, src.value);
+			MOV_R64R64(dest.value, src.value, sizeof_data(dest.data_type));
 		else if (src.type == TOFFSET)
-			MOV_R64OFF(dest.value, src.value);
+			if (!PTR(dest.data_type))
+				MOV_R64OFF(dest.value, src.off, src.off_type, src.base_ptr, sizeof_data(dest.data_type));
+			else
+				LEA(dest.value, src.off, src.off_type, src.base_ptr, sizeof_data(dest.data_type));
+		else if (src.type == TSEG_DATA || src.type == TSEG_BSS)
+		{
+			if (!PTR(dest.data_type))
+				MOV_R64D(dest.value, src.id, sizeof_data(src.data_type));
+			else
+				MOV_R64ADR(dest.value, src.id, QWORD);
+		}
 	}
 	else if (dest.type == TOFFSET)
 	{
 		if (src.type == TIMMEDIATE)
-			MOV_OFFI(dest.value, src.value);
+			MOV_OFFI(dest.off, dest.off_type, dest.base_ptr, src.value, sizeof_data(dest.data_type));
 		else if (src.type == TREGISTER)
-			MOV_OFFR64(dest.value, src.value);
+			MOV_OFFR64(dest.off, dest.off_type, dest.base_ptr, src.value, sizeof_data(dest.data_type));
 		else if (src.type == TOFFSET)
 		{
 			/*x86 doesn't allow for MOV addr, addr
 			  so src needs to be moved to a register first
 			*/
 			REGISTER tmp = reg_alloc();
-			MOV_R64OFF(tmp, src.value);
-			MOV_OFFR64(dest.value, tmp);
+			//TODO: make sure sizeof_data is also there in stack offsets
+			MOV_R64OFF(tmp, src.off, src.off_type, src.base_ptr, sizeof_data(src.data_type));
+			MOV_OFFR64(dest.off, dest.off_type, dest.base_ptr, tmp, sizeof_data(dest.data_type));
+			reg_free(tmp);
+		}
+		else if (src.type == TSEG_DATA || src.type == TSEG_BSS)
+		{
+			REGISTER tmp = reg_alloc();
+			MOV_R64D(tmp, src.id, sizeof_data(src.data_type));
+			MOV_OFFR64(dest.off, dest.off_type, dest.base_ptr, tmp, sizeof_data(dest.data_type));
 			reg_free(tmp);
 		}
 	}
+	else if (dest.type == TSEG_DATA || dest.type == TSEG_BSS)
+	{
+		if (src.type == TREGISTER)
+		{
+			MOV_DR64(dest.id, src.value, sizeof_data(src.data_type));
+		}
+		else if (src.type == TSEG_DATA || src.type == TSEG_BSS)
+		{
+			REGISTER tmp = reg_alloc();
+			MOV_R64D(tmp, src.id, sizeof_data(src.data_type));
+			MOV_DR64(dest.id, tmp, sizeof_data(dest.data_type));
+			reg_free(tmp);
+		}
+		else if (src.type == TOFFSET)
+		{
+			REGISTER tmp = reg_alloc();
+			MOV_R64OFF(tmp, src.off, src.off_type, src.base_ptr, QWORD);
+			MOV_DR64(dest.id, tmp, sizeof_data(dest.data_type));
+			reg_free(tmp);
+		}
+		else if (src.type == TIMMEDIATE)
+		{
+			MOV_DI(dest.id, src.value, sizeof_data(dest.data_type));//CHANGE THIS!! IMPORTANT CHANGED IT
+		}
+	}
 }
+
+/*
+uint64_t array[10];
+
+array[4] = [array + sizeof(uint64_t) * 4]
+*/
 
 static void parse_factor(OPERAND *dest)
 {
 	static int routine = 0;
 
-	if (token.class != '(')
+	if (token.class != '(' && token.value != '*')
 	{
 		OPERAND src;
+		src.data_type = dest->data_type;
 		if (token.class == TNUMBER)
 		{
 			src.type = TIMMEDIATE;
@@ -52,6 +105,47 @@ static void parse_factor(OPERAND *dest)
 		else if (token.class == TIDENTIFIER)
 		{
 			src = *find_var(current_scope, token.id);
+			read_token();
+			if (token.class == '[')
+			{
+				dest->data_type = src.data_type;
+				src.type = TOFFSET;
+				src.base_ptr = src.id;
+				read_token();
+				if (token.class == TNUMBER)
+				{
+					printf("\n%d\n", sizeof_data(src.data_type));
+					src.off = token.value * sizeof_data(src.data_type-8);
+					src.off_type = TIMMEDIATE;
+					read_token();
+					if (token.class != ']')
+					{
+						unread_token();
+						goto normal;
+					}
+				}
+				else
+normal:
+				{
+					OPERAND tmp;
+					tmp.type = TREGISTER;
+					tmp.data_type = UINT64_T;
+					tmp.value = reg_alloc();
+					parse_logic(&tmp);
+					src.off = tmp.value;
+					src.off_type = TREGISTER;
+				}
+			}
+			else
+				unread_token();
+		}
+		else if (token.class == TKEYWORD && token.value == SIZEOF)
+		{
+			read_token();
+			read_token();
+			src.type = TIMMEDIATE;
+			src.value = sizeof_data(token.value);
+			read_token();
 		}
 		else if (token.class == TFUNCTION)
 		{
@@ -64,24 +158,74 @@ static void parse_factor(OPERAND *dest)
 		read_token();
 	}
 
-
 	else if (token.class == '(')
 	{
 		OPERAND operand;
 		operand.type = TREGISTER;
 		operand.value = reg_alloc();
+		operand.data_type = dest->data_type;
 		read_token();
 
-		parse_expression(&operand);
-		MOV_R64R64(dest->value, operand.value);
+		parse_logic(&operand);
+		//parse_expression(&operand);
+		//MOV_R64R64(dest->value, operand.value, sizeof_data(dest->data_type));
+		MOVE(*dest, operand);
 		read_token();
 		reg_free(operand.value);
 	}
 }
 
+
+
+static void parse_prefix(OPERAND *dest)
+{
+	//unread_token();
+	if (token.class == TOPERATOR && token.value == '*')
+	{
+		/*if (!(dest->data_type >= UINT64_PTR_T && dest->data_type <= UINT8_PTR_T))
+			assert(0);*/
+		OPERAND src;
+		src.data_type = /*(PTR(dest->data_type)) ? dest->data_type - 8 : */dest->data_type;
+		src.type = TOFFSET;
+		src.off_type = 0;
+		src.base_ptr = registers[reg_alloc()];
+		src.off = 0;
+		read_token();
+		parse_factor(&src);
+		if (dest->type == TREGISTER)
+			//MOV_R64D(dest->value, registers[src.value], sizeof_data(dest->data_type));
+			MOV_R64OFF(dest->value, src.off, src.off_type, src.base_ptr, sizeof_data(dest->data_type));
+		else  if (dest->type == TSEG_DATA || dest->type == TSEG_BSS)
+		{
+			OPERAND tmp;
+			tmp.data_type = src.data_type;
+			tmp.value = reg_alloc();
+			MOV_R64D(tmp.value, registers[src.value], sizeof_data(src.data_type));
+			reg_free(tmp.value);
+			MOV_DR64(dest->id, tmp.value, sizeof_data(dest->data_type));
+		}
+		reg_free(src.value);
+		//read_token();
+	}
+	else if (token.class == TOPERATOR && token.value == '&')
+	{
+		if (!PTR(dest->data_type))
+			assert(0);
+		read_token();
+		parse_factor(dest);
+	}
+
+	else
+	{
+		//read_token();
+		parse_factor(dest);
+	}
+}
+
 static void parse_term(OPERAND *dest)
 {
-	parse_factor(dest);
+	//parse_factor(dest);
+	parse_prefix(dest);
 
 	while (token.class == TOPERATOR && (token.value == '*' || token.value == '/' || token.value == '%'))
 	{
@@ -91,10 +235,11 @@ static void parse_term(OPERAND *dest)
 			OPERAND operand;
 			operand.type = TREGISTER;
 			operand.value = reg_alloc();
+			operand.data_type = dest->data_type;
 			parse_factor(&operand);
-			MOV_R64R64(RAX, dest->value);
-			MUL_R64(operand.value);
-			MOV_R64R64(dest->value, RAX);
+			MOV_R64R64(RAX, dest->value, sizeof_data(dest->data_type));
+			MUL_R64(operand.value, sizeof_data(dest->data_type));
+			MOV_R64R64(dest->value, RAX, sizeof_data(dest->data_type));
 			reg_free(operand.value);
 		}
 		else if (token.value == '/')
@@ -103,10 +248,11 @@ static void parse_term(OPERAND *dest)
 			OPERAND operand;
 			operand.type = TREGISTER;
 			operand.value = reg_alloc();
+			operand.data_type = dest->data_type;
 			parse_factor(&operand);
-			MOV_R64R64(RAX, dest->value);
-			DIV_R64(operand.value);
-			MOV_R64R64(dest->value, RAX);
+			MOV_R64R64(RAX, dest->value, sizeof_data(dest->data_type));
+			DIV_R64(operand.value, sizeof_data(operand.data_type));
+			MOV_R64R64(dest->value, RAX, sizeof_data(dest->data_type));
 			reg_free(operand.value);
 		}
 		else if (token.value == '%')
@@ -115,11 +261,12 @@ static void parse_term(OPERAND *dest)
 			OPERAND operand;
 			operand.type = TREGISTER;
 			operand.value = reg_alloc();
+			operand.data_type = dest->data_type;
 			parse_factor(&operand);
-			MOV_R64R64(RAX, dest->value);
-			DIV_R64(operand.value);
+			MOV_R64R64(RAX, dest->value, sizeof_data(dest->data_type));
+			DIV_R64(operand.value, sizeof_data(operand.data_type));
 			//The remainder of a division is stored in RDX
-			MOV_R64R64(dest->value, RDX);
+			MOV_R64R64(dest->value, RDX, sizeof_data(dest->data_type));
 			reg_free(operand.value);
 		}
 	}
@@ -146,8 +293,9 @@ static void parse_expression(OPERAND *dest)
 			OPERAND operand;
 			operand.type = TREGISTER;
 			operand.value = reg_alloc();
+			operand.data_type = dest->data_type;
 			parse_term(&operand);
-			ADD_R64R64(dest->value, operand.value);
+			ADD_R64R64(dest->value, operand.value, sizeof_data(dest->data_type), sizeof_data(operand.data_type));
 			reg_free(operand.value);
 		}
 		else if (token.value == '-')
@@ -156,8 +304,9 @@ static void parse_expression(OPERAND *dest)
 			OPERAND operand;
 			operand.type = TREGISTER;
 			operand.value = reg_alloc();
+			operand.data_type = dest->data_type;
 			parse_term(&operand);
-			SUB_R64R64(dest->value, operand.value);
+			SUB_R64R64(dest->value, operand.value, sizeof_data(dest->data_type), sizeof_data(operand.data_type));
 			reg_free(operand.value);
 		}
 	}
@@ -180,21 +329,22 @@ static void parse_relation(OPERAND *dest)
 			OPERAND operand;
 			operand.type = TREGISTER;
 			operand.value = reg_alloc();
+			operand.data_type = dest->data_type;
 			parse_expression(&operand);
-			CMP(dest->value, operand);
+			CMP(dest->value, operand, sizeof_data(dest->data_type));
 			char else_routine[100];
 			char end_routine[100];
 			sprintf(else_routine, "_rif_%d", routine);
 			sprintf(end_routine, "_rend_%d", routine);
 			routine++;
 			JNE(else_routine);
-			MOV_R64I(dest->value, 1);
+			MOV_R64I(dest->value, 1, sizeof_data(dest->data_type));
 			JMP(end_routine);
-			write_str(else_routine);
-			write_strn(":\n", 2);
-			MOV_R64I(dest->value, 0);
-			write_str(end_routine);
-			write_strn(":\n", 2);
+			write_str(else_routine, SECT_CODE);
+			write_strn(":\n", 2, SECT_CODE);
+			MOV_R64I(dest->value, 0, sizeof_data(dest->data_type));
+			write_str(end_routine, SECT_CODE);
+			write_strn(":\n", 2, SECT_CODE);
 			reg_free(operand.value);
 		}
 		else if (token.value == NOT_EQUAL)
@@ -203,21 +353,22 @@ static void parse_relation(OPERAND *dest)
 			OPERAND operand;
 			operand.type = TREGISTER;
 			operand.value = reg_alloc();
+			operand.data_type = dest->data_type;
 			parse_expression(&operand);
-			CMP(dest->value, operand);
+			CMP(dest->value, operand, sizeof_data(dest->data_type));
 			char else_routine[100];
 			char end_routine[100];
 			sprintf(else_routine, "_rif_%d", routine);
 			sprintf(end_routine, "_rend_%d", routine);
 			routine++;
 			JE(else_routine);
-			MOV_R64I(dest->value, 1);
+			MOV_R64I(dest->value, 1, sizeof_data(dest->data_type));
 			JMP(end_routine);
-			write_str(else_routine);
-			write_strn(":\n", 2);
-			MOV_R64I(dest->value, 0);
-			write_str(end_routine);
-			write_strn(":\n", 2);
+			write_str(else_routine, SECT_CODE);
+			write_strn(":\n", 2, SECT_CODE);
+			MOV_R64I(dest->value, 0, sizeof_data(dest->data_type));
+			write_str(end_routine, SECT_CODE);
+			write_strn(":\n", 2, SECT_CODE);
 			reg_free(operand.value);
 		}
 		else if (token.value == GREATER)
@@ -226,21 +377,22 @@ static void parse_relation(OPERAND *dest)
 			OPERAND operand;
 			operand.type = TREGISTER;
 			operand.value = reg_alloc();
+			operand.data_type = dest->data_type;
 			parse_expression(&operand);
-			CMP(dest->value, operand);
+			CMP(dest->value, operand, sizeof_data(dest->data_type));
 			char else_routine[100];
 			char end_routine[100];
 			sprintf(else_routine, "_rif_%d", routine);
 			sprintf(end_routine, "_rend_%d", routine);
 			routine++;
 			JB(else_routine);//TODO: add in JL for signed values;
-			MOV_R64I(dest->value, 1);
+			MOV_R64I(dest->value, 1, sizeof_data(dest->data_type));
 			JMP(end_routine);
-			write_str(else_routine);
-			write_strn(":\n", 2);
-			MOV_R64I(dest->value, 0);
-			write_str(end_routine);
-			write_strn(":\n", 2);
+			write_str(else_routine, SECT_CODE);
+			write_strn(":\n", 2, SECT_CODE);
+			MOV_R64I(dest->value, 0, sizeof_data(dest->data_type));
+			write_str(end_routine, SECT_CODE);
+			write_strn(":\n", 2, SECT_CODE);
 			reg_free(operand.value);
 		}
 		else if (token.value == LESS)
@@ -249,21 +401,22 @@ static void parse_relation(OPERAND *dest)
 			OPERAND operand;
 			operand.type = TREGISTER;
 			operand.value = reg_alloc();
+			operand.data_type = dest->data_type;
 			parse_expression(&operand);
-			CMP(dest->value, operand);
+			CMP(dest->value, operand, sizeof_data(dest->data_type));
 			char else_routine[100];
 			char end_routine[100];
 			sprintf(else_routine, "_rif_%d", routine);
 			sprintf(end_routine, "_rend_%d", routine);
 			routine++;
 			JA(else_routine);
-			MOV_R64I(dest->value, 1);
+			MOV_R64I(dest->value, 1, sizeof_data(dest->data_type));
 			JMP(end_routine);
-			write_str(else_routine);
-			write_strn(":\n", 2);
-			MOV_R64I(dest->value, 0);
-			write_str(end_routine);
-			write_strn(":\n", 2);
+			write_str(else_routine, SECT_CODE);
+			write_strn(":\n", 2, SECT_CODE);
+			MOV_R64I(dest->value, 0, sizeof_data(dest->data_type));
+			write_str(end_routine, SECT_CODE);
+			write_strn(":\n", 2, SECT_CODE);
 			reg_free(operand.value);
 		}
 		else if (token.value == LESS_EQUAL)
@@ -272,8 +425,9 @@ static void parse_relation(OPERAND *dest)
 			OPERAND operand;
 			operand.type = TREGISTER;
 			operand.value = reg_alloc();
+			operand.data_type = dest->data_type;
 			parse_expression(&operand);
-			CMP(dest->value, operand);
+			CMP(dest->value, operand, sizeof_data(dest->data_type));
 			char else_routine[100];
 			char end_routine[100];
 			sprintf(else_routine, "_rif_%d", routine);
@@ -281,13 +435,13 @@ static void parse_relation(OPERAND *dest)
 			routine++;
 			JA(else_routine);
 			JNE(else_routine);
-			MOV_R64I(dest->value, 1);
+			MOV_R64I(dest->value, 1, sizeof_data(dest->data_type));
 			JMP(end_routine);
-			write_str(else_routine);
-			write_strn(":\n", 2);
-			MOV_R64I(dest->value, 0);
-			write_str(end_routine);
-			write_strn(":\n", 2);
+			write_str(else_routine, SECT_CODE);
+			write_strn(":\n", 2, SECT_CODE);
+			MOV_R64I(dest->value, 0, sizeof_data(dest->data_type));
+			write_str(end_routine, SECT_CODE);
+			write_strn(":\n", 2, SECT_CODE);
 			reg_free(operand.value);
 		}
 		else if (token.value == GREATER_EQUAL)
@@ -296,8 +450,9 @@ static void parse_relation(OPERAND *dest)
 			OPERAND operand;
 			operand.type = TREGISTER;
 			operand.value = reg_alloc();
+			operand.data_type = dest->data_type;
 			parse_expression(&operand);
-			CMP(dest->value, operand);
+			CMP(dest->value, operand, sizeof_data(dest->data_type));
 			char else_routine[100];
 			char end_routine[100];
 			sprintf(else_routine, "_rif_%d", routine);
@@ -305,13 +460,13 @@ static void parse_relation(OPERAND *dest)
 			routine++;
 			JB(else_routine);
 			JNE(else_routine);
-			MOV_R64I(dest->value, 1);
+			MOV_R64I(dest->value, 1, sizeof_data(dest->data_type));
 			JMP(end_routine);
-			write_str(else_routine);
-			write_strn(":\n", 2);
-			MOV_R64I(dest->value, 0);
-			write_str(end_routine);
-			write_strn(":\n", 2);
+			write_str(else_routine, SECT_CODE);
+			write_strn(":\n", 2, SECT_CODE);
+			MOV_R64I(dest->value, 0, sizeof_data(dest->data_type));
+			write_str(end_routine, SECT_CODE);
+			write_strn(":\n", 2, SECT_CODE);
 			reg_free(operand.value);
 		}
 	}
@@ -334,21 +489,22 @@ static void parse_logic(OPERAND *dest)
 			OPERAND operand;
 			operand.type = TREGISTER;
 			operand.value = reg_alloc();
+			operand.data_type = dest->data_type;
 			parse_relation(&operand);
-			AND_R64R64(dest->value, operand.value);
+			AND_R64R64(dest->value, operand.value, sizeof_data(dest->data_type), sizeof_data(dest->data_type));
 			char else_routine[100];
 			char end_routine[100];
 			sprintf(else_routine, "_rlog_%d", routine);
 			sprintf(end_routine, "_rendlog_%d", routine);
 			routine++;
 			JNE(else_routine);
-			MOV_R64I(dest->value, 1);
+			MOV_R64I(dest->value, 1, sizeof_data(dest->data_type));
 			JMP(end_routine);
-			write_str(else_routine);
-			write_strn(":\n", 2);
-			MOV_R64I(dest->value, 0);
-			write_str(end_routine);
-			write_strn(":\n", 2);
+			write_str(else_routine, SECT_CODE);
+			write_strn(":\n", 2, SECT_CODE);
+			MOV_R64I(dest->value, 0, sizeof_data(dest->data_type));
+			write_str(end_routine, SECT_CODE);
+			write_strn(":\n", 2, SECT_CODE);
 			reg_free(operand.value);
 		}
 		else if (token.value == OR)
@@ -357,21 +513,22 @@ static void parse_logic(OPERAND *dest)
 			OPERAND operand;
 			operand.type = TREGISTER;
 			operand.value = reg_alloc();
+			operand.data_type = dest->data_type;
 			parse_relation(&operand);
-			OR_R64R64(dest->value, operand.value);
+			OR_R64R64(dest->value, operand.value, sizeof_data(dest->data_type), sizeof_data(dest->data_type));
 			char else_routine[100];
 			char end_routine[100];
 			sprintf(else_routine, "_rlog_%d", routine);
 			sprintf(end_routine, "_rendlog_%d", routine);
 			routine++;
 			JNE(else_routine);
-			MOV_R64I(dest->value, 1);
+			MOV_R64I(dest->value, 1, sizeof_data(dest->data_type));
 			JMP(end_routine);
-			write_str(else_routine);
-			write_strn(":\n", 2);
-			MOV_R64I(dest->value, 0);
-			write_str(end_routine);
-			write_strn(":\n", 2);
+			write_str(else_routine, SECT_CODE);
+			write_strn(":\n", 2, SECT_CODE);
+			MOV_R64I(dest->value, 0, sizeof_data(dest->data_type));
+			write_str(end_routine, SECT_CODE);
+			write_strn(":\n", 2, SECT_CODE);
 			reg_free(operand.value);
 		}
 	}
@@ -379,40 +536,156 @@ static void parse_logic(OPERAND *dest)
 
 static void parse_assignment(OPERAND *dest)
 {
-	read_token();
-	if (token.class == TOPERATOR && token.value == '=')
+	/*if (dest->data_type >= UINT64_PTR_T && dest->data_type <= UINT8_PTR_T)
+	{
+		unread_token();
+		if (token.class == TOPERATOR && token.value == '*')
+		{
+			OPERAND src;
+			src.data_type = dest->data_type;
+			src.type = TREGISTER;
+			src.value = reg_alloc();
+			read_token();
+			parse_factor(&src);
+			dest->type = TREGISTER;
+			dest->data_type -= 8;
+			dest->value = reg_alloc();
+			MOV_R64D(dest->value, registers[src.value], sizeof_data(dest->data_type));
+			//read_token();
+			reg_free(src.value);
+		}
+		else
+			read_token();
+	}
+	else
+		read_token();*/
+	unread_token();
+	if (!(token.class == TOPERATOR && token.value == '*'))
+	{
+		read_token();
+		parse_factor(dest);
+		read_token();
+		parse_expression(dest);
+	}
+	else
+	{
+		read_token();
+		/*OPERAND tmp;
+		tmp.type = TOFFSET;
+		tmp.data_type = dest->data_type - 8;
+		tmp.off = reg_alloc();
+		tmp.base_ptr = "0";
+		//MOVE(tmp, *dest);
+		//parse_prefix(&tmp);
+		parse_expression(&tmp);
+		dest->data_type -= 8;
+		MOVE(*dest, tmp);*/
+		dest->data_type -= 8;
+		parse_expression(dest);
+		dest->type = TOFFSET;
+		dest->off = dest->value;
+		dest->off_type = TREGISTER;
+		dest->base_ptr = "0";
+		//parse_expression(dest);
+		//dest->data_type -= 8;
+		read_token();
+		parse_expression(dest);
+		reg_free(dest->off);
+	}
+	/*if (token.class == TOPERATOR && token.value == '=')
 	{
 		read_token();
 		//parse_logic(dest);
 		parse_expression(dest);
-	}
+		if (dest->type == TREGISTER)
+			reg_free(dest->value);
+		else
+			reg_free(dest->off);
+	}*/
 	/*else
 		assert(0);*/
 }
 
 static void parse_declaration(void)
 {
-	int type = token.value;
+	int data_type = token.value;
+
 
 	read_token();
 
 	if (token.class == TIDENTIFIER)
 	{
-		VARIABLE var;
-		var.type = type;
-		var.op.type = TREGISTER;
+		OPERAND var;
+		var.data_type = data_type;
 		var.id = token.id;
-		var.op.value = reg_alloc();
-		add_variable(var, current_scope);
 
-		parse_assignment(&(var.op));
+
+		if (current_scope != parent)
+		{
+			var.type = TREGISTER;
+			var.value = reg_alloc();
+			add_variable(var, current_scope);
+			parse_assignment(&var);
+		}
+		else
+		{
+			read_token();
+			/*
+			 * Here, the initializer element has to be constant.
+			 * I can't handle complex operations like 5 - (34 /37) etc
+			 * Since all the functions that do that output registers.
+			 * I'll just have to hope that the preprocessor substitutes the
+			 * result of the operation. If not, I'm in trouble :D.
+			 */
+			if (token.value == '=')
+			{
+				var.type = TSEG_DATA;
+
+				read_token();
+				assert(token.class == TNUMBER);
+
+				var.value = token.value;
+
+				//TODO: add arrays and structs
+				add_data(var.id, var.data_type, var.value);
+
+				read_token();
+
+				//parse_assignment
+			}
+			else
+			{
+				var.type = TSEG_BSS;
+				/* For the time being assume that
+				 * size in add_bss is always 1.
+				 * Won't be true with arrays though.
+				 */
+
+				int size = 1;
+
+				/*array*/
+				if (token.class == '[')
+				{
+					read_token();
+					size = token.value;
+					read_token();
+					add_bss(var.id, var.data_type, size);
+					var.data_type += 8;
+				}
+				else
+					add_bss(var.id, var.data_type, size);
+				read_token();
+			}
+			add_variable(var, current_scope);
+		}
+		//parse_assignment(&var);
 		//unread_token();
 	}
 	else if (token.class == TFUNCTION)
 	{
 		if (current_scope != parent)
 			assert(0);
-		VARIABLE *vars;
+		OPERAND *vars;
 		FUNCTION *func;
 		func = find_function(token.id);
 		if (func != NULL)
@@ -426,34 +699,51 @@ static void parse_declaration(void)
 		  which means that the arguments of the function have to be sorted out
 		  If there already was a declaration, this step is skipped*/
 		{
-			vars = (VARIABLE*)malloc(sizeof(VARIABLE));
-			func = create_function(token.id, vars, 0, type);
+			vars = (OPERAND*)malloc(sizeof(OPERAND));
+			func = create_function(token.id, vars, 0, sizeof_data(data_type));
 
-			func->type = type;
+			func->type = data_type;
 
 			read_token();
 
 			if (token.value != '(')
 				assert(0);
 			read_token();
-			VARIABLE var;
-			int offset = 8;
+			OPERAND var;
+			int offset = 16;
 
 			while (token.class != ')')
 			{
 				if (token.class == TKEYWORD)
 				{
-					var.type = token.value;//CHECK TO SEE IF THEY USE THE SAME ENUM!
+					var.data_type = token.value;//CHECK TO SEE IF THEY USE THE SAME ENUM!
 				}
 				else if (token.class == TIDENTIFIER)
 				{
 					var.id = token.id;
-					var.op.value = offset;
-					var.op.type = TOFFSET;
+					//var.value = offset;
+					var.type = TOFFSET;
+					var.off = offset;
+					var.off_type = TIMMEDIATE;
+					var.base_ptr = spec_registers[RBP];
 					add_funcvar(func, var);
 					var.type = 0;
 					var.id = 0;
-					offset += 8;//For 8 byte data types eg uint64_t
+					switch (sizeof_data(var.data_type))
+					{
+					case QWORD:
+						offset += 8;
+						break;
+					case DWORD:
+						offset += 4;
+						break;
+					case WORD:
+						offset += 2;
+						break;
+					case BYTE:
+						offset++;
+						break;
+					}
 				}
 				else
 					assert(0);
@@ -464,8 +754,8 @@ static void parse_declaration(void)
 scope:
 			if (token.class == '{')
 			{
-				write_str(func->name);
-				write_strn(":\n", 2);
+				write_str(func->name, SECT_CODE);
+				write_strn(":\n", 2, SECT_CODE);
 				func_prolog();
 				current_scope = add_scope(parent, NULL, NULL, NULL);
 				for (int i = 0; i < func->var_count; i++)
@@ -477,9 +767,9 @@ scope:
 				 it has while (token.class != '}' instead of TEOF)*/
 				parse_statement('}');
 				//writec(9);
-				if (func->type == VOID && strcmp(func->name, "main"))
+				if (func->type == VOID && strcmp(func->name, "_start"))
 					func_epilog();
-				else if (!strcmp(func->name, "main"))
+				else if (!strcmp(func->name, "_start"))
 					EXIT();
 				free_scope(current_scope);
 				current_scope = parent;
@@ -499,6 +789,7 @@ static void parse_condition(void)
 	OPERAND dest;
 	dest.type = TREGISTER;
 	dest.value = reg_alloc();
+	dest.data_type = UINT64_T;
 
 	read_token();
 	read_token();
@@ -516,8 +807,9 @@ static void parse_condition(void)
 	OPERAND tmp;
 	tmp.type = TIMMEDIATE;
 	tmp.value = 1;
+	tmp.data_type = UINT64_T;
 
-	CMP(dest.value, tmp);
+	CMP(dest.value, tmp, sizeof_data(dest.data_type));
 
 	reg_free(dest.value);
 
@@ -540,8 +832,8 @@ static void parse_condition(void)
 		assert(0);
 	}
 
-	write_str(else_routine);
-	write_strn(":\n", 2);
+	write_str(else_routine, SECT_CODE);
+	write_strn(":\n", 2, SECT_CODE);
 
 	if (token.class == TKEYWORD && token.value == ELSE)
 	{
@@ -558,8 +850,8 @@ static void parse_condition(void)
 			assert(0);
 	}
 
-	write_str(end_routine);
-	write_strn(":\n", 2);
+	write_str(end_routine, SECT_CODE);
+	write_strn(":\n", 2, SECT_CODE);
 
 	reg_free(dest.value);
 
@@ -621,8 +913,8 @@ static void parse_loop(void)
 		char loop_end[100];
 		sprintf(loop, "_loop%d", routine);
 		sprintf(loop_end, "_loop_end%d", routine++);
-		write_str(loop);
-		write_strn(":\n", 2);
+		write_str(loop, SECT_CODE);
+		write_strn(":\n", 2, SECT_CODE);
 		current_scope = add_scope(current_scope, NULL, NULL, NULL);
 		read_token();
 		assert(token.class == '(');
@@ -631,21 +923,24 @@ static void parse_loop(void)
 		dest.value = reg_alloc();
 
 		read_token();
+		//LOOK AT THIS AGAIN
+		dest.data_type = UINT64_T;
 		parse_logic(&dest);
 
 		OPERAND tmp;
 		tmp.type = TIMMEDIATE;
 		tmp.value = 1;
+		tmp.data_type = dest.data_type;
 
-		CMP(dest.value, tmp);
+		CMP(dest.value, tmp, sizeof_data(dest.data_type));
 		JNE(loop_end);
 		read_token();
 		if (token.class == '{')
 		{
 			parse_statement('}');
 			JMP(loop);
-			write_str(loop_end);
-			write_strn(":\n", 2);
+			write_str(loop_end, SECT_CODE);
+			write_strn(":\n", 2, SECT_CODE);
 			read_token();
 			current_scope = current_scope->parent;
 			free_scope(current_scope->child);
@@ -663,20 +958,22 @@ static void parse_loop(void)
 		char loop_end[100];
 		sprintf(loop, "_loop%d", routine);
 		sprintf(loop_end, "_loop_end%d", routine++);
-		write_str(loop);
-		write_strn(":\n", 2);
+		write_str(loop, SECT_CODE);
+		write_strn(":\n", 2, SECT_CODE);
 		current_scope = add_scope(current_scope, NULL, NULL, NULL);
 		OPERAND dest;
 		dest.type = TREGISTER;
 		dest.value = reg_alloc();
+		dest.data_type = UINT64_T;
 
 		parse_logic(&dest);
 
 		OPERAND tmp;
 		tmp.type = TIMMEDIATE;
 		tmp.value = 1;
+		tmp.data_type = dest.data_type;
 
-		CMP(dest.value, tmp);
+		CMP(dest.value, tmp, sizeof_data(dest.data_type));
 		JNE(loop_end);
 
 
@@ -686,7 +983,7 @@ static void parse_loop(void)
 		so file_pos is there so that the program can go back to it
 		at the end of the scope
 		*/
-		int file_pos = fin->index;
+		int file_pos = fin->buff->index;
 
 		read_token();
 
@@ -694,13 +991,13 @@ static void parse_loop(void)
 			read_token();
 
 		parse_statement('}');
-		int end_loop_pos = fin->index;
-		fin->index = file_pos;
+		int end_loop_pos = fin->buff->index;
+		fin->buff->index = file_pos;
 		parse_statement(')');
 		JMP(loop);
-		write_str(loop_end);
-		write_strn(":\n", 2);
-		fin->index = end_loop_pos;
+		write_str(loop_end, SECT_CODE);
+		write_strn(":\n", 2, SECT_CODE);
+		fin->buff->index = end_loop_pos;
 		read_token();
 		current_scope = current_scope->parent;
 		free_scope(current_scope->child);
@@ -726,22 +1023,30 @@ void parse_statement(int stop)
 	char scope_end[100];
 	sprintf(scope_start, "_scope_start%d", scope);
 	sprintf(scope_end, "_scope_end%d", scope++);
-	write_str(scope_start);
-	write_strn(":\n", 2);
+	write_str(scope_start, SECT_CODE);
+	write_strn(":\n", 2, SECT_CODE);
 
 	int type;
 	read_token();
 	do
 	{
 		//read_token();
-		if (token.class == TKEYWORD && (token.value == UINT64_T || token.value == VOID))
+		if (token.class == TKEYWORD && ((token.value >= UINT64_T && token.value <= UINT8_PTR_T) || token.value == VOID))
 			parse_declaration();
 		else if (token.class == TIDENTIFIER)
 		{
-			OPERAND *tmp = find_var(current_scope, token.id);
-			if (tmp == NULL)
-				assert(0);
-			parse_assignment(tmp);
+			OPERAND *var = find_var(current_scope, token.id);
+			assert(var);
+			OPERAND tmp;
+			if (PTR(var->data_type))
+			{
+				tmp.type = TREGISTER;
+				tmp.data_type = var->data_type;
+				tmp.value = reg_alloc();
+				parse_assignment(&tmp);
+			}
+			else
+				parse_assignment(var);
 		}
 		else if (token.class == TKEYWORD && token.value == IF)
 		{
@@ -769,8 +1074,9 @@ void parse_statement(int stop)
 				OPERAND rax;
 				rax.type = TREGISTER;
 				rax.value = RAX;
+				rax.data_type = ret.data_type;
 				MOVE(rax, ret);
-				writec(9);
+				writec(9, SECT_CODE);
 				//write_strn("RET\n", 4);
 				func_epilog();
 			}
@@ -812,7 +1118,7 @@ void parse_statement(int stop)
 		{
 			JMP(scope_start);
 		}
-		else if (token.class == ';')
+		else if (token.class == ';' || (token.class == TOPERATOR && token.value == '*'))
 			read_token();
 		/*else if (token.class == '}')
 		{
@@ -824,20 +1130,20 @@ void parse_statement(int stop)
 		printf("%d", type++);
 	} while (token.class != stop && token.class != TEOF);
 	//free_whole_scope(parent);
-	write_str(scope_end);
-	write_strn(":\n", 2);
+	write_str(scope_end, SECT_CODE);
+	write_strn(":\n", 2, SECT_CODE);
 }
 
-static void add_variable(VARIABLE var, SCOPE *scope)
+static void add_variable(OPERAND var, SCOPE *scope)
 {
 	if (scope->var_length == 0)
 	{
-		scope->vars = (VARIABLE*)malloc(sizeof(VARIABLE));
+		scope->vars = (OPERAND*)malloc(sizeof(OPERAND));
 		scope->var_length++;
 	}
 	else if (scope->var_index == scope->var_length)
 	{
-		scope->vars = (VARIABLE*)realloc(scope->vars, sizeof(VARIABLE) * (scope->var_length+1));
+		scope->vars = (OPERAND*)realloc(scope->vars, sizeof(OPERAND) * (scope->var_length+1));
 		scope->var_length++;
 	}
 	scope->vars[scope->var_index++] = var;
@@ -868,7 +1174,7 @@ static void free_scope(SCOPE *scope)
 
 	for (int i = 0; i < scope->var_length && i < scope->var_index; i++)
 	{
-		reg_free(scope->vars[i].op.value);
+		reg_free(scope->vars[i].value);
 		free(scope->vars[i].id);
 	}
 
@@ -942,7 +1248,7 @@ static OPERAND* find_var_in_scope(SCOPE scope, char *id)
 	for (int i = 0; i < scope.var_length; i++)
 	{
 		if (scope.vars[i].id != NULL && (!strcmp(id, scope.vars[i].id)))
-			return &(scope.vars[i].op);
+			return &(scope.vars[i]);
 	}
 	return 0;
 }
@@ -956,7 +1262,7 @@ static void add_function(FUNCTION *func)
 	func_list.funcs[func_list.index++] = func;
 }
 
-static FUNCTION* create_function(char *name, VARIABLE *vars, int var_count, int type)
+static FUNCTION* create_function(char *name, OPERAND *vars, int var_count, int type)
 {
 	FUNCTION *function = (FUNCTION*)malloc(sizeof(FUNCTION));
 	function->name = name;
@@ -994,7 +1300,7 @@ static void init_functions(void)
 	func_list.index = 0;
 }
 
-static void add_funcvar(FUNCTION *func, VARIABLE var)
+static void add_funcvar(FUNCTION *func, OPERAND var)
 {
 	if (func->var_count > 0)
 		func->vars = realloc(func->vars, func->var_count + 1);
@@ -1009,9 +1315,10 @@ static void call_function(char *func_name)
 	{
 		if (token.class == TIDENTIFIER)
 		{
-			VARIABLE var;//TODO: change type of find_var to VARIABLE*
-			var.op = *(find_var(current_scope, token.id));
-			PUSH(var.op.value);
+			OPERAND var;
+			var = *(find_var(current_scope, token.id));
+			PUSH(var.value, sizeof_data(var.data_type));
+			//TODO: add stuff for non-registers
 		}
 		read_token();
 	}
