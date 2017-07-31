@@ -16,13 +16,23 @@
    converted to " ".
 */
 
+#define SECT_DATA 0
+#define SECT_BSS 1
+#define SECT_CODE 2
+
+typedef struct
+{
+	char *text;
+	int index;
+	int str_len;
+} BUFFER;
+
 typedef struct
 {
 	FILE *file;
-	char *text;
+	BUFFER *buff;
 	char *name;
-	int index;
-	int str_len;
+	//int str_len;
 
 	struct stat *st;
 } File;
@@ -36,11 +46,11 @@ extern File *fout;
 char readc(void);
 void unreadc(void);
 
-char* read_word(int index); 
+char* read_word(int index);
 
-void writec(char c);
-void write_strn(const char *str, int len);
-void write_str(const char *str);
+void writec(char c, int section);
+void write_strn(const char *str, int len, int section);
+void write_str(const char *str, int section);
 
 void write_to_file(void);
 
