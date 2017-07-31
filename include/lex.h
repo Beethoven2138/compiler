@@ -38,6 +38,7 @@ enum
 	FOR,
 	BREAK,
 	CONTINUE,
+	SIZEOF,
 };
 
 enum
@@ -52,10 +53,23 @@ enum
 	SINT16_T,
 	SINT8_T,
 
+	UINT64_PTR_T,
+	UINT32_PTR_T,
+	UINT16_PTR_T,
+	UINT8_PTR_T,
+
+	SINT64_PTR_T,
+	SINT32_PTR_T,
+	SINT16_PTR_T,
+	SINT8_PTR_T,
+
 	VOID,
-	CHAR,
-	SHORT,
 };//Data types
+
+
+#define PTR(a) ((a >= UINT64_PTR_T && a <= SINT8_PTR_T) ? 1 : 0)
+
+
 
 typedef struct
 {
@@ -73,6 +87,9 @@ typedef struct
 
 extern TOKEN token;
 extern TOKEN prev_token;
+
+static int prev_index;
+
 
 void read_token(void);
 void unread_token();
