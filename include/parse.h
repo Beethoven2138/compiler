@@ -5,10 +5,6 @@
 #include <file.h>
 #include <asm.h>
 
-enum
-{
-	UINT64_t,
-};
 
 typedef struct
 {
@@ -30,13 +26,13 @@ typedef struct SCOPE
 
 	int var_length;
 	int var_index;
-	VARIABLE *vars;
+	OPERAND *vars;
 } SCOPE;
 
 typedef struct FUNCTION
 {
 	char *name;
-	VARIABLE *vars;
+	OPERAND *vars;
 	int var_count;
 	int type;
 } FUNCTION;
@@ -48,6 +44,8 @@ typedef struct
 	int index;
 } FUNCTION_LIST;
 
+
+
 static SCOPE *parent;
 static SCOPE *current_scope;
 
@@ -56,6 +54,7 @@ static FUNCTION_LIST func_list;
 static void MOVE(OPERAND dest, OPERAND src);
 
 static void parse_factor(OPERAND *dest);
+static void parse_prefix(OPERAND *dest);
 static void parse_term(OPERAND *dest);
 static void parse_expression(OPERAND *dest);
 static void parse_relation(OPERAND *dest);
@@ -68,7 +67,7 @@ void parse_statement(int stop);
 
 static void parse_scope(void);
 
-static void add_variable(VARIABLE var, SCOPE *scope);
+static void add_variable(OPERAND var, SCOPE *scope);
 
 static SCOPE* add_scope(SCOPE *parent, SCOPE *child, SCOPE *prev, SCOPE *next);
 
@@ -82,11 +81,11 @@ static OPERAND *find_var(SCOPE *scope, char *id);
 static OPERAND *find_var_in_scope(SCOPE scope, char *id);
 
 static void add_function(FUNCTION *func);
-static FUNCTION* create_function(char *name, VARIABLE *vars, int var_count, int type);
+static FUNCTION* create_function(char *name, OPERAND *vars, int var_count, int type);
 
 static FUNCTION* find_function(char *name);
 static void free_functions(void);
-static void add_funcvar(FUNCTION *func, VARIABLE var);
+static void add_funcvar(FUNCTION *func, OPERAND var);
 
 static void call_function(char *func_name);
 
