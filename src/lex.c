@@ -6,6 +6,7 @@ void read_token()
 {
 	char c;
 	prev_token = token;
+	prev_index = fin->buff->index;
 redo:
 
 	c = readc();
@@ -49,6 +50,8 @@ redo:
 	case ';':
 	case '{':
 	case '}':
+	case '[':
+	case ']':
 	{
 		token.class = c;
 		token.value = c;
@@ -72,7 +75,11 @@ redo:
 			token.value = AND;
 		}
 		else
-			assert(0);
+		{
+			unreadc();
+			token.class = TOPERATOR;
+			token.value = c;
+		}
 		break;
 	}
 	case '|':
@@ -147,11 +154,74 @@ redo:
 	}
 	case 'u':
 	{
-		char *str = read_word(fin->index-1);
+		char *str = read_word(fin->buff->index-1);
 		if (!strncmp("uint64_t", str, 8))
 		{
 			token.class = TKEYWORD;
 			token.value = UINT64_T;
+			read_token();
+			if (token.value == '*')
+			{
+				token.value = UINT64_PTR_T;
+				token.class = TKEYWORD;
+			}
+			else
+			{
+				unread_token();
+				token.class = TKEYWORD;
+				token.value = UINT64_T;
+			}
+		}
+		else if (!strncmp("uint32_t", str, 8))
+		{
+			token.class = TKEYWORD;
+			token.value = UINT32_T;
+			read_token();
+			if (token.value == '*')
+			{
+				token.value = UINT32_PTR_T;
+				token.class = TKEYWORD;
+			}
+			else
+			{
+				unread_token();
+				token.class = TKEYWORD;
+				token.value = UINT32_T;
+			}
+		}
+		else if (!strncmp("uint16_t", str, 8))
+		{
+			token.class = TKEYWORD;
+			token.value = UINT16_T;
+			read_token();
+			if (token.value == '*')
+			{
+				token.value = UINT16_PTR_T;
+				token.class = TKEYWORD;
+			}
+			else
+			{
+				unread_token();
+				token.class = TKEYWORD;
+				token.value = UINT16_T;
+			}
+		}
+		else if (!strncmp("uint8_t", str, 7))
+		{
+			token.class = TKEYWORD;
+			token.value = UINT8_T;
+			read_token();
+			if (token.value == '*')
+			{
+				token.value = UINT8_PTR_T;
+				token.class = TKEYWORD;
+			}
+			else
+			{
+				unread_token();
+				token.class = TKEYWORD;
+				token.value = UINT8_T;
+			}
 		}
 		else if (readc() != '(')
 		{
@@ -169,7 +239,7 @@ redo:
 	}
 	case 'r':
 	{
-		char *str = read_word(fin->index-1);
+		char *str = read_word(fin->buff->index-1);
 		if (!strncmp("return", str, 6))
 		{
 			token.class = TKEYWORD;
@@ -191,7 +261,7 @@ redo:
 	}
 	case 'b':
 	{
-		char *str = read_word(fin->index-1);
+		char *str = read_word(fin->buff->index-1);
 		if (!strncmp("break", str, 5))
 		{
 			token.class = TKEYWORD;
@@ -213,7 +283,7 @@ redo:
 	}
 	case 'c':
 	{
-		char *str = read_word(fin->index-1);
+		char *str = read_word(fin->buff->index-1);
 		if (!strncmp("continue", str, 8))
 		{
 			token.class = TKEYWORD;
@@ -235,7 +305,7 @@ redo:
 	}
 	case 'i':
 	{
-		char *str = read_word(fin->index-1);
+		char *str = read_word(fin->buff->index-1);
 		if (!strncmp("if", str, 2))
 		{
 			token.class = TKEYWORD;
@@ -257,7 +327,7 @@ redo:
 	}
 	case 'f':
 	{
-		char *str = read_word(fin->index-1);
+		char *str = read_word(fin->buff->index-1);
 		if (!strncmp("for", str, 3))//returns 0 on success
 		{
 			token.class = TKEYWORD;
@@ -279,7 +349,7 @@ redo:
 	}
 	case 'w':
 	{
-		char *str = read_word(fin->index-1);
+		char *str = read_word(fin->buff->index-1);
 		if (!strncmp("while", str, 5))
 		{
 			token.class = TKEYWORD;
@@ -301,7 +371,7 @@ redo:
 	}
 	case 'e':
 	{
-		char *str = read_word(fin->index-1);
+		char *str = read_word(fin->buff->index-1);
 		if(!strncmp("else", str, 4))
 		{
 			token.class = TKEYWORD;
@@ -334,9 +404,32 @@ redo:
 	case 'x':
 	case 'y':
 	case 'z':
+	case '_':
 	{
-		char *str = read_word(fin->index-1);
+		char *str = read_word(fin->buff->index-1);
 		if (readc() != '(')
+		{
+			token.class = TIDENTIFIER;
+			token.id = str;
+			unreadc();
+		}
+		else
+		{
+			token.class = TFUNCTION;
+			token.id = str;
+			unreadc();
+		}
+		break;
+	}
+	case 's':
+	{
+		char *str = read_word(fin->buff->index-1);
+		if (!strncmp("sizeof", str, 6))
+		{
+			token.class = TKEYWORD;
+			token.value = SIZEOF;
+		}
+		else if (readc() != '(')
 		{
 			token.class = TIDENTIFIER;
 			token.id = str;
@@ -352,7 +445,7 @@ redo:
 	}
 	case 'v':
 	{
-		char *str = read_word(fin->index-1);
+		char *str = read_word(fin->buff->index-1);
 		if (!strncmp("void", str, 4))
 		{
 			token.class = TKEYWORD;
@@ -380,4 +473,5 @@ redo:
 void unread_token()
 {
 	token = prev_token;
+	fin->buff->index = prev_index;
 }
