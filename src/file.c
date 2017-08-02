@@ -6,6 +6,7 @@ File *make_file(char *name)
 	File *file = (File*)malloc(sizeof(File));
 	file->name = name;
 	file->file = fopen(name, "r");
+	assert(file->file);
 	file->st = (struct stat*)malloc(sizeof(struct stat));
 	stat(file->name, file->st);
 	file->buff = (BUFFER*)malloc(sizeof(BUFFER));
