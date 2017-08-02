@@ -21,8 +21,8 @@ static void MOVE(OPERAND dest, OPERAND src)
 		else if (src.type == TOFFSET)
 			if (!PTR(dest.data_type))
 				MOV_R64OFF(dest.value, src.off, src.off_type, src.base_ptr, sizeof_data(dest.data_type));
-			else
-				LEA(dest.value, src.off, src.off_type, src.base_ptr, sizeof_data(dest.data_type));
+		else
+			LEA(dest.value, src.off, src.off_type, src.base_ptr, sizeof_data(dest.data_type));
 		else if (src.type == TSEG_DATA || src.type == TSEG_BSS)
 		{
 			if (!PTR(dest.data_type))
@@ -108,7 +108,7 @@ static void parse_factor(OPERAND *dest)
 			read_token();
 			if (token.class == '[')
 			{
-				dest->data_type = src.data_type;
+				//dest->data_type = src.data_type;
 				src.type = TOFFSET;
 				src.base_ptr = src.id;
 				read_token();
@@ -690,7 +690,7 @@ static void parse_declaration(void)
 		func = find_function(token.id);
 		if (func != NULL)
 		{
-			while (token.class == '{')
+			while (token.class != '{')
 				read_token();
 			goto scope;
 		}
@@ -745,8 +745,6 @@ static void parse_declaration(void)
 						break;
 					}
 				}
-				else
-					assert(0);
 				read_token();
 			}
 			add_function(func);
@@ -756,16 +754,28 @@ scope:
 			{
 				write_str(func->name, SECT_CODE);
 				write_strn(":\n", 2, SECT_CODE);
-				func_prolog();
+				
 				current_scope = add_scope(parent, NULL, NULL, NULL);
+			        REGISTER reg;
 				for (int i = 0; i < func->var_count; i++)
 				{
+				        reg = reg_alloc();
+					//POP(reg, sizeof_data(func->vars[i].data_type));
+					MOV_R64OFF(reg, func->vars[i].off, func->vars[i].off_type,
+						   func->vars[i].base_ptr, sizeof_data(func->vars[i].data_type));
+					func->vars[i].type = TREGISTER;
+					func->vars[i].value = reg;
 					add_variable(func->vars[i], current_scope);
 				}
+				func_prolog();
 				//parse_scope();
 				/*TODO: parse_scope sucks; make parse_statement except
 				 it has while (token.class != '}' instead of TEOF)*/
 				parse_statement('}');
+				for (int i = 0; i < func->var_count; i++)
+				{
+					reg_free(func->vars[i].value);
+				}
 				//writec(9);
 				if (func->type == VOID && strcmp(func->name, "_start"))
 					func_epilog();
@@ -1127,7 +1137,6 @@ void parse_statement(int stop)
 			free_scope(current_scope->child);
 		}*/
 		//read_token();
-		printf("%d", type++);
 	} while (token.class != stop && token.class != TEOF);
 	//free_whole_scope(parent);
 	write_str(scope_end, SECT_CODE);
@@ -1311,18 +1320,28 @@ static void add_funcvar(FUNCTION *func, OPERAND var)
 static void call_function(char *func_name)
 {
 	read_token();
+        FUNCTION func = *find_function(func_name);
+        OPERAND vars[func.var_count];
+	int var_index = 0;
 	while (token.class != ')')
 	{
 		if (token.class == TIDENTIFIER)
 		{
-			OPERAND var;
-			var = *(find_var(current_scope, token.id));
-			PUSH(var.value, sizeof_data(var.data_type));
+			OPERAND *var;
+			var = (find_var(current_scope, token.id));
+			PUSH(var->value, sizeof_data(var->data_type));
+			vars[var_index].data_type = var->data_type;
+			vars[var_index].value = var->value;
+			var_index++;
 			//TODO: add stuff for non-registers
 		}
 		read_token();
 	}
 	CALL(func_name);
+	for (int i = var_index-1; i >= 0; i--)
+	{
+		POP(vars[i].value, sizeof_data(vars[i].data_type));
+	}
 	//read_token();
 }
 
