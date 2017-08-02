@@ -84,7 +84,7 @@ char* read_word(int index)
 	{
 		c = fin->buff->text[index++];
 		if (c == ' ' || c == '\n' || c == '\r' || c == EOF || c == ';' || c == '(' || c == ')'
-		    || c == ']' || c == '[')
+		    || c == ']' || c == '[' || c == ',')
 		//TODO: Finish this
 		{
 			fin->buff->index = index-1;
