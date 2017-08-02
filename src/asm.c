@@ -69,6 +69,7 @@ void init_registers(char *file_name)
 	assert(fout->file);
 
 	fout->buff = (BUFFER*)malloc(sizeof(BUFFER) * 3);
+	assert(fout->buff);
 
 	fout->name = file_name;
 	fout->buff[0].text = (char*)malloc(sizeof(char));
