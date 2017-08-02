@@ -52,6 +52,7 @@ redo:
 	case '}':
 	case '[':
 	case ']':
+	case ',':
 	{
 		token.class = c;
 		token.value = c;
