@@ -12,6 +12,8 @@ int main(int argc, char *argv[])
 {
 	fin = make_file(argv[1]);
 
+	assert(fin);
+	
 	//read_token();
 
 	init_registers("testasm.asm");
