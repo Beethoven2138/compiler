@@ -10,8 +10,6 @@ static void MOVE(OPERAND dest, OPERAND src)
 	if (dest.type == src.type && dest.value == src.value)
 		return;
 
-	if (dest.type == TIMMEDIATE)
-		assert(0);
 	else if (dest.type == TREGISTER)
 	{
 		if (src.type == TIMMEDIATE)
@@ -34,7 +32,13 @@ static void MOVE(OPERAND dest, OPERAND src)
 	else if (dest.type == TOFFSET)
 	{
 		if (src.type == TIMMEDIATE)
-			MOV_OFFI(dest.off, dest.off_type, dest.base_ptr, src.value, sizeof_data(dest.data_type));
+		{
+			REGISTER tmp = reg_alloc();
+			MOV_R64I(tmp, src.value, sizeof_data(dest.data_type));
+			MOV_OFFR64(dest.off, dest.off_type, dest.base_ptr, tmp, sizeof_data(dest.data_type));
+			reg_free(tmp);
+		}
+		//MOV_OFFI(dest.off, dest.off_type, dest.base_ptr, src.value, sizeof_data(dest.data_type));
 		else if (src.type == TREGISTER)
 			MOV_OFFR64(dest.off, dest.off_type, dest.base_ptr, src.value, sizeof_data(dest.data_type));
 		else if (src.type == TOFFSET)
@@ -78,7 +82,11 @@ static void MOVE(OPERAND dest, OPERAND src)
 		}
 		else if (src.type == TIMMEDIATE)
 		{
-			MOV_DI(dest.id, src.value, sizeof_data(dest.data_type));//CHANGE THIS!! IMPORTANT CHANGED IT
+			//MOV_DI(dest.id, src.value, sizeof_data(dest.data_type));//CHANGE THIS!! IMPORTANT CHANGED IT
+			REGISTER tmp = reg_alloc();
+			MOV_R64I(tmp, src.value, sizeof_data(dest.data_type));
+			MOV_DR64(dest.id, tmp, sizeof_data(dest.data_type));
+			reg_free(tmp);
 		}
 	}
 }
@@ -99,6 +107,12 @@ static void parse_factor(OPERAND *dest)
 		src.data_type = dest->data_type;
 		if (token.class == TNUMBER)
 		{
+			/*if (dest->type = TIMMEDIATE)
+			{
+				dest->value = token.value;
+				read_token();
+				return;
+			}*/
 			src.type = TIMMEDIATE;
 			src.value = token.value;
 		}
@@ -312,10 +326,30 @@ static void parse_expression(OPERAND *dest)
 	}
 }
 
+static void parse_shift(OPERAND *dest)
+{
+	parse_expression(dest);
+	while (token.class == TOPERATOR && (token.value == SLEFT || token.value == SRIGHT))
+	{
+		if (token.value == SLEFT)
+		{
+			read_token();
+			assert(token.class == TNUMBER);
+			SHL(dest->value, token.value, sizeof_data(dest->data_type));
+		}
+		else if (token.value == SRIGHT)
+		{
+			read_token();
+			assert(token.class == TNUMBER);
+			SHR(dest->value, token.value, sizeof_data(dest->data_type));
+		}
+		read_token();
+	}
+}
 
 static void parse_relation(OPERAND *dest)
 {
-	parse_expression(dest);
+	parse_shift(dest);
 
 	static int routine = 0;
 
@@ -330,7 +364,7 @@ static void parse_relation(OPERAND *dest)
 			operand.type = TREGISTER;
 			operand.value = reg_alloc();
 			operand.data_type = dest->data_type;
-			parse_expression(&operand);
+			parse_shift(&operand);
 			CMP(dest->value, operand, sizeof_data(dest->data_type));
 			char else_routine[100];
 			char end_routine[100];
@@ -354,7 +388,7 @@ static void parse_relation(OPERAND *dest)
 			operand.type = TREGISTER;
 			operand.value = reg_alloc();
 			operand.data_type = dest->data_type;
-			parse_expression(&operand);
+			parse_shift(&operand);
 			CMP(dest->value, operand, sizeof_data(dest->data_type));
 			char else_routine[100];
 			char end_routine[100];
@@ -378,7 +412,7 @@ static void parse_relation(OPERAND *dest)
 			operand.type = TREGISTER;
 			operand.value = reg_alloc();
 			operand.data_type = dest->data_type;
-			parse_expression(&operand);
+			parse_shift(&operand);
 			CMP(dest->value, operand, sizeof_data(dest->data_type));
 			char else_routine[100];
 			char end_routine[100];
@@ -402,7 +436,7 @@ static void parse_relation(OPERAND *dest)
 			operand.type = TREGISTER;
 			operand.value = reg_alloc();
 			operand.data_type = dest->data_type;
-			parse_expression(&operand);
+			parse_shift(&operand);
 			CMP(dest->value, operand, sizeof_data(dest->data_type));
 			char else_routine[100];
 			char end_routine[100];
@@ -426,7 +460,7 @@ static void parse_relation(OPERAND *dest)
 			operand.type = TREGISTER;
 			operand.value = reg_alloc();
 			operand.data_type = dest->data_type;
-			parse_expression(&operand);
+			parse_shift(&operand);
 			CMP(dest->value, operand, sizeof_data(dest->data_type));
 			char else_routine[100];
 			char end_routine[100];
@@ -451,7 +485,7 @@ static void parse_relation(OPERAND *dest)
 			operand.type = TREGISTER;
 			operand.value = reg_alloc();
 			operand.data_type = dest->data_type;
-			parse_expression(&operand);
+			parse_shift(&operand);
 			CMP(dest->value, operand, sizeof_data(dest->data_type));
 			char else_routine[100];
 			char end_routine[100];
@@ -565,7 +599,7 @@ static void parse_assignment(OPERAND *dest)
 		read_token();
 		parse_factor(dest);
 		read_token();
-		parse_expression(dest);
+		parse_shift(dest);
 	}
 	else
 	{
@@ -767,7 +801,8 @@ scope:
 					func->vars[i].value = reg;
 					add_variable(func->vars[i], current_scope);
 				}
-				func_prolog();
+				if (strcmp(func->name, "_start"))
+					func_prolog();
 				//parse_scope();
 				/*TODO: parse_scope sucks; make parse_statement except
 				 it has while (token.class != '}' instead of TEOF)*/
