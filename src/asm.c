@@ -1128,7 +1128,6 @@ void func_prolog(void)
 
 void func_epilog(void)
 {
-	writec(9, SECT_CODE);
 	write_strn("POP RBX\n", 8, SECT_CODE);
 	writec(9, SECT_CODE);
 	write_strn("POP RBP\n", 8, SECT_CODE);
