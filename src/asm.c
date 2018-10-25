@@ -30,7 +30,7 @@ void init_registers(char *file_name)
 	registers32[8] = "EBX";
 	registers32[9] = "EDX";
 	registers32[10] = "ECX";
-	registers32[11] = "EAX"; 
+	registers32[11] = "EAX";
 
 	registers16[0] = "R15W";
 	registers16[1] = "R14W";
@@ -43,7 +43,7 @@ void init_registers(char *file_name)
 	registers16[8] = "EBX";
 	registers16[9] = "DX";
 	registers16[10] = "CX";
-	registers16[11] = "AX"; 
+	registers16[11] = "AX";
 
 	registers8[0] = "R15B";
 	registers8[1] = "R14B";
@@ -56,7 +56,7 @@ void init_registers(char *file_name)
 	registers8[8] = "BL";
 	registers8[9] = "DL";
 	registers8[10] = "CL";
-	registers8[11] = "AL"; 
+	registers8[11] = "AL";
 
 	spec_registers[0] = "RSP";
 	spec_registers[1] = "RBP";
@@ -69,7 +69,6 @@ void init_registers(char *file_name)
 	assert(fout->file);
 
 	fout->buff = (BUFFER*)malloc(sizeof(BUFFER) * 3);
-	assert(fout->buff);
 
 	fout->name = file_name;
 	fout->buff[0].text = (char*)malloc(sizeof(char));
@@ -1060,6 +1059,54 @@ void DEC(REGISTER dest, int size)
 	writec('\n', SECT_CODE);
 }
 
+void SHL(REGISTER dest, int src, int size)
+{
+	writec(9, SECT_CODE);
+	write_strn("SHL ", 4, SECT_CODE);
+	switch (size)
+	{
+	case QWORD:
+		write_str(registers[dest], SECT_CODE);
+		break;
+	case DWORD:
+		write_str(registers32[dest], SECT_CODE);
+		break;
+	case WORD:
+		write_str(registers16[dest], SECT_CODE);
+		break;
+	case BYTE:
+		write_str(registers8[dest], SECT_CODE);
+		break;
+	}
+	char tmp[100];
+	sprintf(tmp, ", %d\n", src);
+	write_str(tmp, SECT_CODE);
+}
+
+void SHR(REGISTER dest, int src, int size)
+{
+	writec(9, SECT_CODE);
+	write_strn("SHR ", 4, SECT_CODE);
+	switch (size)
+	{
+	case QWORD:
+		write_str(registers[dest], SECT_CODE);
+		break;
+	case DWORD:
+		write_str(registers32[dest], SECT_CODE);
+		break;
+	case WORD:
+		write_str(registers16[dest], SECT_CODE);
+		break;
+	case BYTE:
+		write_str(registers8[dest], SECT_CODE);
+		break;
+	}
+	char tmp[100];
+	sprintf(tmp, ", %d/n", src);
+	write_str(tmp, SECT_CODE);
+}
+
 /*
 The function calling conventions that this compiler uses are
 the ones stated in the book "Modern x86 Assembly Language Programming".
@@ -1081,6 +1128,7 @@ void func_prolog(void)
 
 void func_epilog(void)
 {
+	writec(9, SECT_CODE);
 	write_strn("POP RBX\n", 8, SECT_CODE);
 	writec(9, SECT_CODE);
 	write_strn("POP RBP\n", 8, SECT_CODE);
@@ -1098,9 +1146,11 @@ void EXIT(void)
 	write_strn("syscall\n", 8, SECT_CODE);
 }
 
-void add_data(char *name, int type, int value)
+void add_data(char *name, int type, int value, bool extern_link)
 {
 	writec(9, SECT_DATA);
+	if (extern_link)
+		write_strn("extern ", 7, SECT_DATA);
 	write_str(name, SECT_DATA);
 	write_strn(" d", 2, SECT_DATA);
 	switch (sizeof_data(type))
@@ -1124,9 +1174,11 @@ void add_data(char *name, int type, int value)
 	write_str(tmp, SECT_DATA);
 }
 
-void add_bss(char *name, int type, int size)
+void add_bss(char *name, int type, int size, bool extern_link)
 {
 	writec(9, SECT_BSS);
+	if (extern_link)
+		write_strn("extern ", 7, SECT_BSS);
 	write_str(name, SECT_BSS);
 	writec(':', SECT_BSS);
 	write_strn(" res", 4, SECT_BSS);
@@ -1206,4 +1258,3 @@ int sizeof_data(int data_type)
 		assert(0);
 	}
 }
-
