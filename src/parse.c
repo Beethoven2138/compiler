@@ -666,8 +666,7 @@ static void parse_declaration(int flags)
 		var.data_type = data_type;
 		var.id = token.id;
 
-
-		if (current_scope != parent)
+		if (current_scope != parent && (flags & 0x100) == 0)
 		{
 			var.type = TREGISTER;
 			var.value = reg_alloc();
@@ -1120,10 +1119,10 @@ void parse_statement(int stop)
 		}
 		else if (token.class == TKEYWORD && token.value == STATIC)
 		{
-			assert(current_scope == parent);
+			//assert(current_scope == parent);
 			read_token();
 			assert(token.class == TKEYWORD);
-			parse_declaration(0);
+			parse_declaration(0x100);
 		}
 		else if (token.class == TIDENTIFIER)
 		{
