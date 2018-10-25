@@ -5,6 +5,7 @@
 #include <file.h>
 #include <asm.h>
 
+#define EXTERN_LINK 1
 
 typedef struct
 {
@@ -57,12 +58,13 @@ static void parse_factor(OPERAND *dest);
 static void parse_prefix(OPERAND *dest);
 static void parse_term(OPERAND *dest);
 static void parse_expression(OPERAND *dest);
+static void parse_shift(OPERAND *dest);
 static void parse_relation(OPERAND *dest);
 static void parse_logic(OPERAND *dest);
 static void parse_assignment(OPERAND *dest);
 
 
-static void parse_declaration(void);
+static void parse_declaration(int flags);
 void parse_statement(int stop);
 
 static void parse_scope(void);
