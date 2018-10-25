@@ -61,11 +61,11 @@ typedef struct OPERAND
 	/*8-bit, 16-bit etc*/
 	int data_type;
 
-	/*holds the register being used
-	  if no register is used, value = -1
-	*/
 	char *id;
 
+        /*holds the register being used
+	  if no register is used, value = -1
+	*/
 	union
 	{
 		int value;
@@ -151,6 +151,9 @@ void OR_R64R64(REGISTER reg1, REGISTER reg2, int size1, int size2);
 void INC(REGISTER dest, int size);
 void DEC(REGISTER dest, int size);
 
+void SHL(REGISTER dest, int src, int size);
+void SHR(REGISTER dest, int src, int size);
+
 //used at the start of a function
 void func_prolog(void);
 //used at the end of a function
@@ -159,8 +162,8 @@ void func_epilog(void);
 
 void EXIT(void);
 
-void add_data(char *name, int type, int value);
-void add_bss(char *name, int type, int size);
+void add_data(char *name, int type, int value, bool extern_link);
+void add_bss(char *name, int type, int size, bool extern_link);
 
 
 void write_to_file(void);
