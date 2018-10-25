@@ -806,6 +806,8 @@ scope:
 				write_strn(":\n", 2, SECT_CODE);
 
 				current_scope = add_scope(parent, NULL, NULL, NULL);
+				if (strcmp(func->name, "main"))
+					func_prolog();
 			        REGISTER reg;
 				for (int i = 0; i < func->var_count; i++)
 				{
@@ -817,8 +819,7 @@ scope:
 					func->vars[i].value = reg;
 					add_variable(func->vars[i], current_scope);
 				}
-				if (!strcmp(func->name, "_start"))
-					func_prolog();
+
 				//parse_scope();
 				/*TODO: parse_scope sucks; make parse_statement except
 				 it has while (token.class != '}' instead of TEOF)*/
@@ -828,9 +829,9 @@ scope:
 					reg_free(func->vars[i].value);
 				}
 				//writec(9);
-				if (func->type == VOID && strcmp(func->name, "_start"))
+				if (func->type == VOID && strcmp(func->name, "main"))
 					func_epilog();
-				else if (!strcmp(func->name, "_start"))
+				else if (!strcmp(func->name, "main"))
 					EXIT();
 				free_scope(current_scope);
 				current_scope = parent;
