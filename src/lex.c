@@ -64,8 +64,35 @@ redo:
 	case '/':
 	case '%':
 	{
-		token.class = TOPERATOR;
-		token.value = c;
+		const char old = c;
+		if (readc() == '=')
+		{
+			token.class = TOPERATOR;
+		        switch (old)
+			{
+			case '+':
+				token.value = PLUS_EQUAL;
+				break;
+			case '-':
+				token.value = MINUS_EQUAL;
+				break;
+			case '*':
+				token.value = MUL_EQUAL;
+				break;
+			case '/':
+				token.value = DIV_EQUAL;
+				break;
+			case '%':
+				token.value = MOD_EQUAL;
+				break;
+			}
+		}
+		else
+		{
+			unreadc();
+			token.class = TOPERATOR;
+			token.value = c;
+		}
 		break;
 	}
 	case '&':
@@ -125,11 +152,17 @@ redo:
 	}
 	case '<':
 	{
-		if (readc() == '=')
+		char c = readc();
+		if (c == '=')
 		{
 			token.class = TOPERATOR;
-			token.value = LESS;
+			token.value = LESS_EQUAL;
 		}//TODO: add bitwise operators
+		else if (c == '<')
+		{
+			token.class = TOPERATOR;
+			token.value = SLEFT;
+		}
 		else
 		{
 			unreadc();
@@ -140,10 +173,16 @@ redo:
 	}
 	case '>':
 	{
-		if (readc() == '=')
+		char c = readc();
+		if (c == '=')
 		{
 			token.class = TOPERATOR;
-			token.value = GREATER;
+			token.value = GREATER_EQUAL;
+		}
+		else if (c == '>')
+		{
+			token.class = TOPERATOR;
+			token.value = SRIGHT;
 		}
 		else
 		{
@@ -378,6 +417,11 @@ redo:
 			token.class = TKEYWORD;
 			token.value = ELSE;
 		}
+		else if (!strncmp("extern", str, 6))
+		{
+			token.class = TKEYWORD;
+			token.value = EXTERN;
+		}
 		else if (readc() != '(')
 		{
 			token.class = TIDENTIFIER;
@@ -429,6 +473,11 @@ redo:
 		{
 			token.class = TKEYWORD;
 			token.value = SIZEOF;
+		}
+		else if (!strncmp("static", str, 6))
+		{
+			token.class = TKEYWORD;
+			token.value = STATIC;
 		}
 		else if (readc() != '(')
 		{
