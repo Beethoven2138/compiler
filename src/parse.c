@@ -114,7 +114,10 @@ static void parse_factor(OPERAND *dest)
 				return;
 			}*/
 			src.type = TIMMEDIATE;
-			src.value = token.value;
+			  src.value = token.value;
+			//dest->type = TIMMEDIATE;/*experimental*/
+			//dest->value = token.value;
+			//return;
 		}
 		else if (token.class == TIDENTIFIER)
 		{
@@ -307,9 +310,19 @@ static void parse_expression(OPERAND *dest)
 			OPERAND operand;
 			operand.type = TREGISTER;
 			operand.value = reg_alloc();
+			//const int tmp = operand.value;
 			operand.data_type = dest->data_type;
 			parse_term(&operand);
-			ADD_R64R64(dest->value, operand.value, sizeof_data(dest->data_type), sizeof_data(operand.data_type));
+			if (operand.type == TREGISTER)
+				ADD_R64R64(dest->value, operand.value, sizeof_data(dest->data_type),
+					   sizeof_data(operand.data_type));
+			/*else if (operand.type == TIMMEDIATE)
+			{
+				ADD_R64I(dest->value, operand.value, sizeof_data(dest->data_type));
+			}
+			else
+				assert(0);
+			reg_free(tmp);*/
 			reg_free(operand.value);
 		}
 		else if (token.value == '-')
@@ -640,7 +653,7 @@ static void parse_assignment(OPERAND *dest)
 		assert(0);*/
 }
 
-static void parse_declaration(void)
+static void parse_declaration(int flags)
 {
 	int data_type = token.value;
 
@@ -681,7 +694,7 @@ static void parse_declaration(void)
 				var.value = token.value;
 
 				//TODO: add arrays and structs
-				add_data(var.id, var.data_type, var.value);
+				add_data(var.id, var.data_type, var.value, flags & 0x1);
 
 				read_token();
 
@@ -703,11 +716,11 @@ static void parse_declaration(void)
 					read_token();
 					size = token.value;
 					read_token();
-					add_bss(var.id, var.data_type, size);
+					add_bss(var.id, var.data_type, size, flags & 0x1);
 					var.data_type += 8;
 				}
 				else
-					add_bss(var.id, var.data_type, size);
+					add_bss(var.id, var.data_type, size, flags & 0x1);
 				read_token();
 			}
 			add_variable(var, current_scope);
@@ -730,7 +743,7 @@ static void parse_declaration(void)
 		}
 		else
 		/*This means that the function hasn't already been declared
-		  which means that the arguments of the function have to be sorted out
+		  which means that the arguments of the function have to be sorted out.
 		  If there already was a declaration, this step is skipped*/
 		{
 			vars = (OPERAND*)malloc(sizeof(OPERAND));
@@ -786,9 +799,13 @@ static void parse_declaration(void)
 scope:
 			if (token.class == '{')
 			{
+				if (flags & 0x1)
+				{
+					write_strn("global ", 6, SECT_CODE);
+				}
 				write_str(func->name, SECT_CODE);
 				write_strn(":\n", 2, SECT_CODE);
-				
+
 				current_scope = add_scope(parent, NULL, NULL, NULL);
 			        REGISTER reg;
 				for (int i = 0; i < func->var_count; i++)
@@ -801,7 +818,7 @@ scope:
 					func->vars[i].value = reg;
 					add_variable(func->vars[i], current_scope);
 				}
-				if (strcmp(func->name, "_start"))
+				if (!strcmp(func->name, "_start"))
 					func_prolog();
 				//parse_scope();
 				/*TODO: parse_scope sucks; make parse_statement except
@@ -979,7 +996,8 @@ static void parse_loop(void)
 
 		CMP(dest.value, tmp, sizeof_data(dest.data_type));
 		JNE(loop_end);
-		read_token();
+		while (token.class != '{')
+			read_token();
 		if (token.class == '{')
 		{
 			parse_statement('}');
@@ -991,7 +1009,10 @@ static void parse_loop(void)
 			free_scope(current_scope->child);
 		}
 		else
+		{
+			printf("%d", token.class);
 			assert(0);
+		}
 	}
 	else if (token.value == FOR)
 	{
@@ -1049,7 +1070,7 @@ static void parse_loop(void)
 	}
 }
 
-static void parse_scope(void)
+/*static void parse_scope(void)
 {
 	read_token();
 	while (token.class != '}')
@@ -1059,7 +1080,7 @@ static void parse_scope(void)
 		read_token();
 	}
 	free_scope(current_scope->child);
-}
+	}*/
 
 void parse_statement(int stop)
 {
@@ -1077,7 +1098,33 @@ void parse_statement(int stop)
 	{
 		//read_token();
 		if (token.class == TKEYWORD && ((token.value >= UINT64_T && token.value <= UINT8_PTR_T) || token.value == VOID))
-			parse_declaration();
+			parse_declaration(0);
+		else if (token.class == TKEYWORD && token.value == EXTERN)
+		{
+			assert(current_scope == parent);
+			write_strn("extern ", 6, SECT_CODE);
+			read_token();
+			assert(token.class == TKEYWORD);
+			parse_declaration(EXTERN_LINK);
+			/*assert(token.class == TKEYWORD);
+			const int data_type = token.value;
+			read_token();
+			assert(token.class == TIDENTIFIER);
+			writec(' ', SECT_CODE);
+			write_str(token.id, SECT_CODE);
+			writec(10, SECT_CODE);
+			OPERAND tmp_extern = {TSEG_BSS, data_type, token.id, -1};
+			add_variable(tmp_extern, current_scope);
+			read_token();
+			assert(token.class == ';');*/
+		}
+		else if (token.class == TKEYWORD && token.value == STATIC)
+		{
+			assert(current_scope == parent);
+			read_token();
+			assert(token.class == TKEYWORD);
+			parse_declaration(0);
+		}
 		else if (token.class == TIDENTIFIER)
 		{
 			OPERAND *var = find_var(current_scope, token.id);
@@ -1098,7 +1145,7 @@ void parse_statement(int stop)
 			parse_condition();
 		}
 		else if (token.class == TKEYWORD && (token.value == WHILE ||
-			 			    token.value == FOR))
+						     token.value == FOR))
 		{
 			parse_loop();
 		}
@@ -1167,7 +1214,7 @@ void parse_statement(int stop)
 			read_token();
 		/*else if (token.class == '}')
 		{
-			
+
 			current_scope = current_scope->parent;
 			free_scope(current_scope->child);
 		}*/
