@@ -30,6 +30,11 @@ enum
 	OR_EQUAL,
 	XOR,
 	XOR_EQUAL,
+	PLUS_EQUAL,
+	MINUS_EQUAL,
+	MUL_EQUAL,
+	DIV_EQUAL,
+	MOD_EQUAL,
 	NOT,
 	IF,
 	ELSE,
@@ -39,6 +44,8 @@ enum
 	BREAK,
 	CONTINUE,
 	SIZEOF,
+	SLEFT,
+	SRIGHT,
 };
 
 enum
@@ -64,6 +71,8 @@ enum
 	SINT8_PTR_T,
 
 	VOID,
+	EXTERN,
+	STATIC,
 };//Data types
 
 
