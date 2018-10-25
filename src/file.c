@@ -35,26 +35,46 @@ File *make_file(char *name)
 			white_space = true;
 			continue;
 		}
-
-		else
+		if (c == '/')
 		{
-			if (new_line)
+			int tmp = fgetc(file->file);
+			if (tmp == '/')
 			{
-				file->buff->text[file->buff->index++] = '\n';
-				new_line = false;
+				while ((tmp = fgetc(file->file)) != '\n' && tmp != EOF);
+				continue;
 			}
-			if (white_space)
+			else if (tmp == '*')
 			{
-				file->buff->text[file->buff->index++] = ' ';
-				white_space = false;
+				while ((tmp = fgetc(file->file)) != EOF)
+				{
+					if (tmp == '*')
+					{
+						tmp = fgetc(file->file);
+						if (tmp == '/')
+							break;
+					}
+				}
+				continue;
 			}
-			file->buff->text[file->buff->index++] = c;
+		}
 
-			if (file->buff->index >= file->buff->str_len)
-			{
-				file->buff->text = realloc(file->buff->text, file->buff->str_len += 5);
-				assert(file->buff->text);
-			}
+
+		if (new_line)
+		{
+			file->buff->text[file->buff->index++] = '\n';
+			new_line = false;
+		}
+		if (white_space)
+		{
+			file->buff->text[file->buff->index++] = ' ';
+			white_space = false;
+		}
+		file->buff->text[file->buff->index++] = c;
+
+		if (file->buff->index >= file->buff->str_len)
+		{
+			file->buff->text = realloc(file->buff->text, file->buff->str_len += 5);
+			assert(file->buff->text);
 		}
 	}
 	file->buff->str_len = file->buff->index + 1;
