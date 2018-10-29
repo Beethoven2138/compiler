@@ -53,7 +53,7 @@ enum
 	QWORD = 8,
 };
 
-typedef struct OPERAND
+typedef struct _operand
 {
 	/*says if its bss, data, register etc*/
 	int type;
@@ -77,6 +77,9 @@ typedef struct OPERAND
 			char* base_ptr;
 		};
 	};
+
+	//For unions
+	struct _operand *next;
 } OPERAND;
 
 
@@ -86,12 +89,12 @@ typedef struct OPERAND
 
 bool reg_gen[8];
 
-const char *registers[12];
-const char *spec_registers[4];
+char *registers[12];
+char *spec_registers[4];
 
-const char *registers32[12];
-const char *registers16[12];
-const char *registers8[12];
+char *registers32[12];
+char *registers16[12];
+char *registers8[12];
 
 void init_registers(char *file_name);
 

@@ -7,13 +7,16 @@
 
 #define EXTERN_LINK 1
 
-typedef struct
+typedef struct _variable
 {
 	char *id;
 	int type;
 
 	OPERAND op;
 
+	//for unions
+	//struct _variable *next;
+	
 	//TODO: add conditions for when all the registers are used up
 } VARIABLE;
 
@@ -28,6 +31,7 @@ typedef struct SCOPE
 	int var_length;
 	int var_index;
 	OPERAND *vars;
+	unsigned int offset;
 } SCOPE;
 
 typedef struct FUNCTION
@@ -36,6 +40,7 @@ typedef struct FUNCTION
 	OPERAND *vars;
 	int var_count;
 	int type;
+	unsigned int offset;
 } FUNCTION;
 
 typedef struct
@@ -83,7 +88,7 @@ static OPERAND *find_var(SCOPE *scope, char *id);
 static OPERAND *find_var_in_scope(SCOPE scope, char *id);
 
 static void add_function(FUNCTION *func);
-static FUNCTION* create_function(char *name, OPERAND *vars, int var_count, int type);
+static FUNCTION* create_function(char *name, OPERAND *vars, int var_count, int type, unsigned int offset);
 
 static FUNCTION* find_function(char *name);
 static void free_functions(void);

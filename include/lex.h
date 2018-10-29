@@ -70,9 +70,13 @@ enum
 	SINT16_PTR_T,
 	SINT8_PTR_T,
 
+	STRUCT,
+
 	VOID,
 	EXTERN,
 	STATIC,
+	K_REGISTER,
+	UNION,
 };//Data types
 
 

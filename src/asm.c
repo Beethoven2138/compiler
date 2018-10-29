@@ -204,7 +204,12 @@ void MOV_R64OFF(int dest, int off, int off_type, char *base_ptr, int size)
 	write_strn(", ", 2, SECT_CODE);
 	char tmp[100];
 	if (off_type == TIMMEDIATE)
-		sprintf(tmp, "[%s+%d]", base_ptr, off);
+	{
+		if (off > 0)
+			sprintf(tmp, "[%s+%d]", base_ptr, off);
+		else
+			sprintf(tmp, "[%s]", base_ptr);
+	}
 	else if (off_type == TREGISTER)
 	{
 		switch (size)
@@ -233,7 +238,12 @@ void MOV_OFFR64(int off, int off_type, char *base_ptr, int src, int size)
 	write_strn("MOV ", 4, SECT_CODE);
 	char tmp[100];
 	if (off_type == TIMMEDIATE)
-		sprintf(tmp, "[%s+%d]", base_ptr, off);
+	{
+		if (off > 0)
+			sprintf(tmp, "[%s+%d]", base_ptr, off);
+		else
+			sprintf(tmp, "[%s]", base_ptr, off);
+	}
 	else if (off_type == TREGISTER)
 	{
 		switch (size)

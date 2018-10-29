@@ -263,6 +263,11 @@ redo:
 				token.value = UINT8_T;
 			}
 		}
+		else if (!strncmp("union", str, 5))
+		{
+			token.class = TKEYWORD;
+			token.value = UNION;
+		}
 		else if (readc() != '(')
 		{
 			token.class = TIDENTIFIER;
@@ -284,6 +289,11 @@ redo:
 		{
 			token.class = TKEYWORD;
 			token.value = RETURN;
+		}
+		else if (!strncmp("register", str, 8))
+		{
+			token.class = TKEYWORD;
+			token.value = K_REGISTER;
 		}
 		else if (readc() != '(')
 		{
@@ -478,6 +488,11 @@ redo:
 		{
 			token.class = TKEYWORD;
 			token.value = STATIC;
+		}
+		else if (!strncmp("struct", str, 6))
+		{
+			token.class = TKEYWORD;
+			token.value = STRUCT;
 		}
 		else if (readc() != '(')
 		{

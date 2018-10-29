@@ -21,7 +21,7 @@ static void MOVE(OPERAND dest, OPERAND src)
 				MOV_R64OFF(dest.value, src.off, src.off_type, src.base_ptr, sizeof_data(dest.data_type));
 		else
 			LEA(dest.value, src.off, src.off_type, src.base_ptr, sizeof_data(dest.data_type));
-		else if (src.type == TSEG_DATA || src.type == TSEG_BSS)
+		if (src.type == TSEG_DATA || src.type == TSEG_BSS)
 		{
 			if (!PTR(dest.data_type))
 				MOV_R64D(dest.value, src.id, sizeof_data(src.data_type));
@@ -107,17 +107,8 @@ static void parse_factor(OPERAND *dest)
 		src.data_type = dest->data_type;
 		if (token.class == TNUMBER)
 		{
-			/*if (dest->type = TIMMEDIATE)
-			{
-				dest->value = token.value;
-				read_token();
-				return;
-			}*/
 			src.type = TIMMEDIATE;
-			  src.value = token.value;
-			//dest->type = TIMMEDIATE;/*experimental*/
-			//dest->value = token.value;
-			//return;
+			src.value = token.value;
 		}
 		else if (token.class == TIDENTIFIER)
 		{
@@ -125,7 +116,6 @@ static void parse_factor(OPERAND *dest)
 			read_token();
 			if (token.class == '[')
 			{
-				//dest->data_type = src.data_type;
 				src.type = TOFFSET;
 				src.base_ptr = src.id;
 				read_token();
@@ -196,11 +186,8 @@ normal:
 
 static void parse_prefix(OPERAND *dest)
 {
-	//unread_token();
 	if (token.class == TOPERATOR && token.value == '*')
 	{
-		/*if (!(dest->data_type >= UINT64_PTR_T && dest->data_type <= UINT8_PTR_T))
-			assert(0);*/
 		OPERAND src;
 		src.data_type = /*(PTR(dest->data_type)) ? dest->data_type - 8 : */dest->data_type;
 		src.type = TOFFSET;
@@ -222,7 +209,6 @@ static void parse_prefix(OPERAND *dest)
 			MOV_DR64(dest->id, tmp.value, sizeof_data(dest->data_type));
 		}
 		reg_free(src.value);
-		//read_token();
 	}
 	else if (token.class == TOPERATOR && token.value == '&')
 	{
@@ -254,9 +240,13 @@ static void parse_term(OPERAND *dest)
 			operand.value = reg_alloc();
 			operand.data_type = dest->data_type;
 			parse_factor(&operand);
-			MOV_R64R64(RAX, dest->value, sizeof_data(dest->data_type));
+			OPERAND tmp;
+			tmp.type = TREGISTER;
+			tmp.value = RAX;
+			tmp.data_type = dest->data_type;
+			MOVE(tmp, *dest);
 			MUL_R64(operand.value, sizeof_data(dest->data_type));
-			MOV_R64R64(dest->value, RAX, sizeof_data(dest->data_type));
+			MOVE(*dest, tmp);
 			reg_free(operand.value);
 		}
 		else if (token.value == '/')
@@ -267,9 +257,13 @@ static void parse_term(OPERAND *dest)
 			operand.value = reg_alloc();
 			operand.data_type = dest->data_type;
 			parse_factor(&operand);
-			MOV_R64R64(RAX, dest->value, sizeof_data(dest->data_type));
+			OPERAND tmp;
+			tmp.type = TREGISTER;
+			tmp.value = RAX;
+			tmp.data_type = dest->data_type;
+			MOVE(tmp, *dest);
 			DIV_R64(operand.value, sizeof_data(operand.data_type));
-			MOV_R64R64(dest->value, RAX, sizeof_data(dest->data_type));
+			MOVE(*dest, tmp);
 			reg_free(operand.value);
 		}
 		else if (token.value == '%')
@@ -280,10 +274,15 @@ static void parse_term(OPERAND *dest)
 			operand.value = reg_alloc();
 			operand.data_type = dest->data_type;
 			parse_factor(&operand);
-			MOV_R64R64(RAX, dest->value, sizeof_data(dest->data_type));
+			OPERAND tmp;
+			tmp.type = TREGISTER;
+			tmp.value = RAX;
+			tmp.data_type = dest->data_type;
+			MOVE(tmp, *dest);
 			DIV_R64(operand.value, sizeof_data(operand.data_type));
 			//The remainder of a division is stored in RDX
-			MOV_R64R64(dest->value, RDX, sizeof_data(dest->data_type));
+			tmp.value = RDX;
+			MOVE(*dest, tmp);
 			reg_free(operand.value);
 		}
 	}
@@ -313,9 +312,26 @@ static void parse_expression(OPERAND *dest)
 			//const int tmp = operand.value;
 			operand.data_type = dest->data_type;
 			parse_term(&operand);
-			if (operand.type == TREGISTER)
-				ADD_R64R64(dest->value, operand.value, sizeof_data(dest->data_type),
-					   sizeof_data(operand.data_type));
+			if (operand.type == TREGISTER && dest->type == TREGISTER)
+				ADD_R64R64(dest->value, operand.value, sizeof_data(dest->data_type), sizeof_data(operand.data_type));
+			/*else if (operand.type == TREGISTER && dest->type == TOFFSET)
+			{
+//void MOV_R64OFF(int dest, int off, int off_type, char *base_ptr, int size);
+				REGISTER tmp = reg_alloc();
+				MOV_R64OFF(tmp, dest->off, dest->off_type, dest->base_ptr, sizeof_data(dest->data_type));
+				ADD_R64R64(tmp, operand.value, sizeof_data(dest->data_type), sizeof_data(dest->data_type));
+				MOV_OFFR64(dest->off, dest->off_type, dest->base_ptr, tmp, sizeof_data(dest->data_type));
+				}*/
+			else if (operand.type == TREGISTER && dest->type != TREGISTER)
+			{
+				OPERAND tmp; tmp.type = TREGISTER; tmp.value = reg_alloc(); tmp.data_type = dest->data_type;
+				MOVE(tmp, *dest);
+				ADD_R64R64(tmp.value, operand.value, sizeof_data(dest->data_type), sizeof_data(operand.data_type));
+				MOVE(*dest, tmp);
+				reg_free(tmp.value);
+			}
+			else
+				assert(0);
 			/*else if (operand.type == TIMMEDIATE)
 			{
 				ADD_R64I(dest->value, operand.value, sizeof_data(dest->data_type));
@@ -333,7 +349,20 @@ static void parse_expression(OPERAND *dest)
 			operand.value = reg_alloc();
 			operand.data_type = dest->data_type;
 			parse_term(&operand);
-			SUB_R64R64(dest->value, operand.value, sizeof_data(dest->data_type), sizeof_data(operand.data_type));
+			if (operand.type == TREGISTER && dest->type == TREGISTER)
+				SUB_R64R64(dest->value, operand.value, sizeof_data(dest->data_type), sizeof_data(operand.data_type));
+			else if (operand.type == TREGISTER && dest->type != TREGISTER)
+			{
+				OPERAND tmp; tmp.type = TREGISTER; tmp.value = reg_alloc(); tmp.data_type = dest->data_type;
+				//MOV_R64OFF(tmp, dest->off, dest->off_type, dest->base_ptr, sizeof_data(dest->data_type));
+				MOVE(tmp, *dest);
+				SUB_R64R64(tmp.value, operand.value, sizeof_data(dest->data_type), sizeof_data(dest->data_type));
+				//MOV_OFFR64(dest->off, dest->off_type, dest->base_ptr, tmp, sizeof_data(dest->data_type));
+				MOVE(*dest, tmp);
+				reg_free(tmp.value);
+			}
+			else
+				assert(0);
 			reg_free(operand.value);
 		}
 	}
@@ -526,8 +555,6 @@ static void parse_logic(OPERAND *dest)
 
 	parse_relation(dest);
 
-	//read_token();
-
 	while (token.class == TOPERATOR && (token.value == AND || token.value == OR))
 	{
 		if (token.value == AND)
@@ -583,74 +610,32 @@ static void parse_logic(OPERAND *dest)
 
 static void parse_assignment(OPERAND *dest)
 {
-	/*if (dest->data_type >= UINT64_PTR_T && dest->data_type <= UINT8_PTR_T)
-	{
-		unread_token();
-		if (token.class == TOPERATOR && token.value == '*')
-		{
-			OPERAND src;
-			src.data_type = dest->data_type;
-			src.type = TREGISTER;
-			src.value = reg_alloc();
-			read_token();
-			parse_factor(&src);
-			dest->type = TREGISTER;
-			dest->data_type -= 8;
-			dest->value = reg_alloc();
-			MOV_R64D(dest->value, registers[src.value], sizeof_data(dest->data_type));
-			//read_token();
-			reg_free(src.value);
-		}
-		else
-			read_token();
-	}
-	else
-		read_token();*/
 	unread_token();
 	if (!(token.class == TOPERATOR && token.value == '*'))
 	{
 		read_token();
 		parse_factor(dest);
 		read_token();
-		parse_shift(dest);
+		OPERAND tmp;
+		tmp.type = TREGISTER;
+		tmp.value = reg_alloc();
+		tmp.data_type = dest->data_type;
+		parse_shift(&tmp/*dest*/);
+		MOVE(*dest, tmp);
 	}
 	else
 	{
 		read_token();
-		/*OPERAND tmp;
-		tmp.type = TOFFSET;
-		tmp.data_type = dest->data_type - 8;
-		tmp.off = reg_alloc();
-		tmp.base_ptr = "0";
-		//MOVE(tmp, *dest);
-		//parse_prefix(&tmp);
-		parse_expression(&tmp);
-		dest->data_type -= 8;
-		MOVE(*dest, tmp);*/
 		dest->data_type -= 8;
 		parse_expression(dest);
 		dest->type = TOFFSET;
 		dest->off = dest->value;
 		dest->off_type = TREGISTER;
 		dest->base_ptr = "0";
-		//parse_expression(dest);
-		//dest->data_type -= 8;
 		read_token();
 		parse_expression(dest);
 		reg_free(dest->off);
 	}
-	/*if (token.class == TOPERATOR && token.value == '=')
-	{
-		read_token();
-		//parse_logic(dest);
-		parse_expression(dest);
-		if (dest->type == TREGISTER)
-			reg_free(dest->value);
-		else
-			reg_free(dest->off);
-	}*/
-	/*else
-		assert(0);*/
 }
 
 static void parse_declaration(int flags)
@@ -668,8 +653,19 @@ static void parse_declaration(int flags)
 
 		if (current_scope != parent && (flags & 0x100) == 0)
 		{
-			var.type = TREGISTER;
-			var.value = reg_alloc();
+			/* Only for when there's the register keyword*/
+			if (flags & 64)
+			{
+				var.type = TREGISTER;
+				var.value = reg_alloc();
+			}
+			else
+			{
+				var.base_ptr = spec_registers[RBP];
+				var.type = TOFFSET;
+				var.off = current_scope->offset;
+				var.off_type = TIMMEDIATE;
+			}
 			add_variable(var, current_scope);
 			parse_assignment(&var);
 		}
@@ -686,18 +682,12 @@ static void parse_declaration(int flags)
 			if (token.value == '=')
 			{
 				var.type = TSEG_DATA;
-
 				read_token();
 				assert(token.class == TNUMBER);
-
 				var.value = token.value;
-
 				//TODO: add arrays and structs
 				add_data(var.id, var.data_type, var.value, flags & 0x1);
-
 				read_token();
-
-				//parse_assignment
 			}
 			else
 			{
@@ -706,9 +696,7 @@ static void parse_declaration(int flags)
 				 * size in add_bss is always 1.
 				 * Won't be true with arrays though.
 				 */
-
 				int size = 1;
-
 				/*array*/
 				if (token.class == '[')
 				{
@@ -746,7 +734,7 @@ static void parse_declaration(int flags)
 		  If there already was a declaration, this step is skipped*/
 		{
 			vars = (OPERAND*)malloc(sizeof(OPERAND));
-			func = create_function(token.id, vars, 0, sizeof_data(data_type));
+			func = create_function(token.id, vars, 0, sizeof_data(data_type), 0);
 
 			func->type = data_type;
 
@@ -767,7 +755,6 @@ static void parse_declaration(int flags)
 				else if (token.class == TIDENTIFIER)
 				{
 					var.id = token.id;
-					//var.value = offset;
 					var.type = TOFFSET;
 					var.off = offset;
 					var.off_type = TIMMEDIATE;
@@ -787,7 +774,7 @@ static void parse_declaration(int flags)
 						offset += 2;
 						break;
 					case BYTE:
-						offset++;
+						++offset;
 						break;
 					}
 				}
@@ -806,17 +793,18 @@ scope:
 				write_strn(":\n", 2, SECT_CODE);
 
 				current_scope = add_scope(parent, NULL, NULL, NULL);
-				if (strcmp(func->name, "main"))
+				//if (strcmp(func->name, "main"))
 					func_prolog();
 			        REGISTER reg;
 				for (int i = 0; i < func->var_count; i++)
 				{
-				        reg = reg_alloc();
+					//Don't think this is necessary
+				        /*reg = reg_alloc();
 					//POP(reg, sizeof_data(func->vars[i].data_type));
 					MOV_R64OFF(reg, func->vars[i].off, func->vars[i].off_type,
 						   func->vars[i].base_ptr, sizeof_data(func->vars[i].data_type));
 					func->vars[i].type = TREGISTER;
-					func->vars[i].value = reg;
+					func->vars[i].value = reg;*/
 					add_variable(func->vars[i], current_scope);
 				}
 
@@ -839,14 +827,11 @@ scope:
 		}
 		read_token();
 	}
-	//read_token();
 }
 
 static void parse_condition(void)
 {
 	static int routine = 0;
-
-
 
 	OPERAND dest;
 	dest.type = TREGISTER;
@@ -880,8 +865,9 @@ static void parse_condition(void)
 	read_token();
 	if (token.class == '{')
 	{
+		unsigned int offset = current_scope->offset;
 		current_scope = add_scope(current_scope, NULL, NULL, NULL);
-		//parse_scope();
+		current_scope->offset = offset;
 		parse_statement('}');
 		JMP(end_routine);
 		read_token();//Check this
@@ -902,7 +888,15 @@ static void parse_condition(void)
 		read_token();
 		if (token.class == '{')
 		{
+			
+			////DO THIS FOR ALL SUCH LOCATIONS!!!
+
+
+
+
+			unsigned int offset = current_scope->offset;
 			current_scope = add_scope(current_scope, NULL, NULL, NULL);
+			current_scope->offset = offset;
 			parse_statement('}');
 			read_token();
 			current_scope = current_scope->parent;
@@ -977,7 +971,9 @@ static void parse_loop(void)
 		sprintf(loop_end, "_loop_end%d", routine++);
 		write_str(loop, SECT_CODE);
 		write_strn(":\n", 2, SECT_CODE);
+		unsigned int offset = current_scope->offset;
 		current_scope = add_scope(current_scope, NULL, NULL, NULL);
+		current_scope->offset = offset;
 		read_token();
 		assert(token.class == '(');
 		OPERAND dest;
@@ -1000,6 +996,12 @@ static void parse_loop(void)
 			read_token();
 		if (token.class == '{')
 		{
+			//EXPERIMENTAL!!!
+			unsigned int offset = current_scope->offset;
+			current_scope = add_scope(current_scope, NULL, NULL, NULL);
+			current_scope->offset = offset;
+
+
 			parse_statement('}');
 			JMP(loop);
 			write_str(loop_end, SECT_CODE);
@@ -1026,7 +1028,9 @@ static void parse_loop(void)
 		sprintf(loop_end, "_loop_end%d", routine++);
 		write_str(loop, SECT_CODE);
 		write_strn(":\n", 2, SECT_CODE);
+		unsigned int offset = current_scope->offset;
 		current_scope = add_scope(current_scope, NULL, NULL, NULL);
+		current_scope->offset = offset;
 		OPERAND dest;
 		dest.type = TREGISTER;
 		dest.value = reg_alloc();
@@ -1055,6 +1059,10 @@ static void parse_loop(void)
 
 		while (token.class != '{')
 			read_token();
+		//EXPERIMENTAL!!!
+	        offset = current_scope->offset;
+		current_scope = add_scope(current_scope, NULL, NULL, NULL);
+		current_scope->offset = offset;
 
 		parse_statement('}');
 		int end_loop_pos = fin->buff->index;
@@ -1070,17 +1078,6 @@ static void parse_loop(void)
 	}
 }
 
-/*static void parse_scope(void)
-{
-	read_token();
-	while (token.class != '}')
-	{
-		if (token.class == TKEYWORD && token.value == UINT64_T)
-			parse_declaration();
-		read_token();
-	}
-	free_scope(current_scope->child);
-	}*/
 
 void parse_statement(int stop)
 {
@@ -1099,6 +1096,39 @@ void parse_statement(int stop)
 		//read_token();
 		if (token.class == TKEYWORD && ((token.value >= UINT64_T && token.value <= UINT8_PTR_T) || token.value == VOID))
 			parse_declaration(0);
+		else if (token.class == TKEYWORD && token.value == K_REGISTER)
+		{
+			assert(current_scope != parent);
+			read_token();
+			assert(token.class == TKEYWORD);
+			parse_declaration(64);
+		}
+		else if (token.class == TKEYWORD && token.value == UNION)
+		{
+			/*OPERAND *var;
+			read_token();read_token();
+			unsigned int data_type = 0;
+			while (!(token.class == '}' && token.class == '}'))
+			{
+				assert(token.class == TKEYWORD && token.value != STRUCT);
+				if (!var)
+				{
+					var = (OPERAND*)malloc(sizeof(OPERAND));
+				        add_variable(var, current_scope);
+				}
+				else
+				{
+					var->next = (OPERAND*)malloc(sizeof(OPERAND));
+					var = var->next;
+				}
+				var->next = NULL;
+				var->data_type = token.value;
+				read_token();
+				assert(token.class == TIDENTIFIER);
+				var->id = token.id;
+				read_token();
+				}*/
+		}
 		else if (token.class == TKEYWORD && token.value == EXTERN)
 		{
 			assert(current_scope == parent);
@@ -1106,24 +1136,18 @@ void parse_statement(int stop)
 			read_token();
 			assert(token.class == TKEYWORD);
 			parse_declaration(EXTERN_LINK);
-			/*assert(token.class == TKEYWORD);
-			const int data_type = token.value;
-			read_token();
-			assert(token.class == TIDENTIFIER);
-			writec(' ', SECT_CODE);
-			write_str(token.id, SECT_CODE);
-			writec(10, SECT_CODE);
-			OPERAND tmp_extern = {TSEG_BSS, data_type, token.id, -1};
-			add_variable(tmp_extern, current_scope);
-			read_token();
-			assert(token.class == ';');*/
 		}
 		else if (token.class == TKEYWORD && token.value == STATIC)
 		{
-			//assert(current_scope == parent);
 			read_token();
 			assert(token.class == TKEYWORD);
 			parse_declaration(0x100);
+		}
+		else if (token.class == TKEYWORD && token.value == STRUCT)
+		{
+			read_token();
+			assert(token.class == TIDENTIFIER);
+			parse_declaration(0x1000);
 		}
 		else if (token.class == TIDENTIFIER)
 		{
@@ -1169,27 +1193,12 @@ void parse_statement(int stop)
 				rax.data_type = ret.data_type;
 				MOVE(rax, ret);
 				writec(9, SECT_CODE);
-				//write_strn("RET\n", 4);
 				func_epilog();
 			}
 			read_token();
 		}
 		else if (token.class == TFUNCTION)
 		{
-			/*char *func_name = token.id;
-			read_token();
-			while (token.class != ')')
-			{
-				if (token.class == TIDENTIFIER)
-				{
-					VARIABLE var;//TODO: change type of find_var to VARIABLE*
-					var.op = *(find_var(current_scope, token.id));
-					PUSH(var.op.value);
-				}
-				read_token();
-			}
-			CALL(func_name);*/
-
 			call_function(token.id);
 
 			read_token();
@@ -1212,15 +1221,7 @@ void parse_statement(int stop)
 		}
 		else if (token.class == ';' || (token.class == TOPERATOR && token.value == '*'))
 			read_token();
-		/*else if (token.class == '}')
-		{
-
-			current_scope = current_scope->parent;
-			free_scope(current_scope->child);
-		}*/
-		//read_token();
 	} while (token.class != stop && token.class != TEOF);
-	//free_whole_scope(parent);
 	write_str(scope_end, SECT_CODE);
 	write_strn(":\n", 2, SECT_CODE);
 }
@@ -1238,6 +1239,8 @@ static void add_variable(OPERAND var, SCOPE *scope)
 		scope->var_length++;
 	}
 	scope->vars[scope->var_index++] = var;
+	//ENSURE THAT VAR.DATA_TYPE IS SET BEFORE HERE!!!
+	scope->offset += sizeof_data(var.data_type);
 }
 
 static SCOPE* add_scope(SCOPE *parent, SCOPE *child, SCOPE *prev, SCOPE *next)
@@ -1254,7 +1257,8 @@ static SCOPE* add_scope(SCOPE *parent, SCOPE *child, SCOPE *prev, SCOPE *next)
 	new->var_length = 0;
 	new->var_index = 0;
 	new->vars = NULL/*(VARIABLE*)malloc(sizeof(VARIABLE) * 5)*/;
-
+	//CHECK THIS!!!
+	new->offset = 16;
 	return new;
 }
 
@@ -1268,7 +1272,6 @@ static void free_scope(SCOPE *scope)
 		reg_free(scope->vars[i].value);
 		free(scope->vars[i].id);
 	}
-
 	if (scope->next != NULL || scope->prev != NULL)
 	{
 		if (scope->prev != NULL)
@@ -1281,7 +1284,6 @@ static void free_scope(SCOPE *scope)
 		else if (scope->next != NULL)
 			scope->next->prev = scope->prev;
 	}
-
 	else
 	{
 		if (scope->child != NULL)
@@ -1293,7 +1295,6 @@ static void free_scope(SCOPE *scope)
 		else if (scope->parent != NULL)
 			scope->parent->child = scope->child;
 	}
-
 	free(scope);
 }
 
@@ -1353,14 +1354,14 @@ static void add_function(FUNCTION *func)
 	func_list.funcs[func_list.index++] = func;
 }
 
-static FUNCTION* create_function(char *name, OPERAND *vars, int var_count, int type)
+static FUNCTION* create_function(char *name, OPERAND *vars, int var_count, int type, unsigned int offset)
 {
 	FUNCTION *function = (FUNCTION*)malloc(sizeof(FUNCTION));
 	function->name = name;
 	function->vars = vars;
 	function->type = type;
 	function->var_count = var_count;
-
+	function->offset = offset;
 	return function;
 }
 
@@ -1397,6 +1398,8 @@ static void add_funcvar(FUNCTION *func, OPERAND var)
 		func->vars = realloc(func->vars, func->var_count + 1);
 	func->vars[func->var_count] = var;
 	func->var_count++;
+	//ensure that the data type is set before calling this function
+	func->offset += sizeof_data(var.data_type);
 }
 
 static void call_function(char *func_name)
@@ -1424,6 +1427,4 @@ static void call_function(char *func_name)
 	{
 		POP(vars[i].value, sizeof_data(vars[i].data_type));
 	}
-	//read_token();
 }
-
