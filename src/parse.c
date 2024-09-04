@@ -936,7 +936,7 @@ static void parse_condition(void)
 				free_scope(current_scope->child);
 				//Currently all this stuff only works when there's {. Not for single statement subroutines
 				if (token.class == TKEYWORD && token.value == ELSE)
-				{//THE ELSE WILL BE OUTSIDE OF THE IF BLOCK RETARD!!!!!!!!!!!
+				{
 					write_str(else_routine);
 					read_token();
 					if (token.class == '{')
