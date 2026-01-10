@@ -510,7 +510,6 @@ static void parse_relation(OPERAND *dest)
 			sprintf(end_routine, "_rend_%d", routine);
 			routine++;
 			JA(else_routine);
-			JNE(else_routine);
 			MOV_R64I(dest->value, 1, sizeof_data(dest->data_type));
 			JMP(end_routine);
 			write_str(else_routine, SECT_CODE);
@@ -535,7 +534,6 @@ static void parse_relation(OPERAND *dest)
 			sprintf(end_routine, "_rend_%d", routine);
 			routine++;
 			JB(else_routine);
-			JNE(else_routine);
 			MOV_R64I(dest->value, 1, sizeof_data(dest->data_type));
 			JMP(end_routine);
 			write_str(else_routine, SECT_CODE);
