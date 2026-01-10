@@ -10,6 +10,8 @@ TOKEN token;
 
 int main(int argc, char *argv[])
 {
+	if (argc < 2)
+		return 0;
 	fin = make_file(argv[1]);
 
 	assert(fin);

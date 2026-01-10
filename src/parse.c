@@ -461,7 +461,7 @@ static void parse_relation(OPERAND *dest)
 			sprintf(else_routine, "_rif_%d", routine);
 			sprintf(end_routine, "_rend_%d", routine);
 			routine++;
-			JB(else_routine);//TODO: add in JL for signed values;
+			JBE(else_routine);//TODO: add in JL for signed values;
 			MOV_R64I(dest->value, 1, sizeof_data(dest->data_type));
 			JMP(end_routine);
 			write_str(else_routine, SECT_CODE);
@@ -485,7 +485,7 @@ static void parse_relation(OPERAND *dest)
 			sprintf(else_routine, "_rif_%d", routine);
 			sprintf(end_routine, "_rend_%d", routine);
 			routine++;
-			JA(else_routine);
+			JAE(else_routine);
 			MOV_R64I(dest->value, 1, sizeof_data(dest->data_type));
 			JMP(end_routine);
 			write_str(else_routine, SECT_CODE);
@@ -1214,10 +1214,12 @@ void parse_statement(int stop)
 		else if (token.class == TKEYWORD && token.value == BREAK)
 		{
 			JMP(scope_end);
+			read_token();
 		}
 		else if (token.class == TKEYWORD && token.value == CONTINUE)
 		{
 			JMP(scope_start);
+			read_token();
 		}
 		else if (token.class == ';' || (token.class == TOPERATOR && token.value == '*'))
 			read_token();
@@ -1414,7 +1416,17 @@ static void call_function(char *func_name)
 		{
 			OPERAND *var;
 			var = (find_var(current_scope, token.id));
-			PUSH(var->value, sizeof_data(var->data_type));
+			switch (var-> type)
+			{
+			case TREGISTER:
+				PUSH(var->value, sizeof_data(var->data_type));
+			case TOFFSET:
+
+			case TSEG_DATA:
+
+			case TSEG_BSS:
+				break;
+			}
 			vars[var_index].data_type = var->data_type;
 			vars[var_index].value = var->value;
 			var_index++;

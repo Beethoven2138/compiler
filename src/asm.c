@@ -782,11 +782,29 @@ void JA(char *routine)
 	writec('\n', SECT_CODE);
 }
 
+//Jump if greater than or equal to(unsigned)
+void JAE(char *routine)
+{
+	writec(9, SECT_CODE);
+	write_strn("JAE ", 4, SECT_CODE);
+	write_str(routine, SECT_CODE);
+	writec('\n', SECT_CODE);
+}
+
 //Jump if less than (unsigned)
 void JB(char *routine)
 {
 	writec(9, SECT_CODE);
 	write_strn("JB ", 3, SECT_CODE);
+	write_str(routine, SECT_CODE);
+	writec('\n', SECT_CODE);
+}
+
+//Jump if less than (unsigned)
+void JBE(char *routine)
+{
+	writec(9, SECT_CODE);
+	write_strn("JBE ", 4, SECT_CODE);
 	write_str(routine, SECT_CODE);
 	writec('\n', SECT_CODE);
 }

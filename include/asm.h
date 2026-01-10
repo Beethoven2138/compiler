@@ -141,6 +141,8 @@ void JA(char *routine);//if greater than (unsigned)
 void JB(char *routine);//if less than (unsigned)
 void JE(char *routine);//if ==
 void JNE(char *routine);//if !=
+void JAE(char *routine);//if >=
+void JBE(char *routine);//if <=
 void CMP(REGISTER op1, OPERAND op2, int size);//Left to right
 void CALL(char *routine);
 
