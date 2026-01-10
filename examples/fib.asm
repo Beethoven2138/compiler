@@ -21,7 +21,6 @@ _loop0:
 	MOV R10, 10
 	CMP R11, R10
 	JA _rif_0
-	JNE _rif_0
 	MOV R11, 1
 	JMP _rend_0
 _rif_0:
