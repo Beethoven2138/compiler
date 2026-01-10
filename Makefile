@@ -1,4 +1,4 @@
-lsGCCPARAMS = -Iinclude -g
+GCCPARAMS = -Iinclude -g
 
 OBJECTS=obj/main.o \
 	obj/file.o \
