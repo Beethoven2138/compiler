@@ -1395,7 +1395,7 @@ static void init_functions(void)
 static void add_funcvar(FUNCTION *func, OPERAND var)
 {
 	if (func->var_count > 0)
-		func->vars = realloc(func->vars, func->var_count + 1);
+		func->vars = (OPERAND*)realloc(func->vars, sizeof(OPERAND)*(func->var_count + 1));
 	func->vars[func->var_count] = var;
 	func->var_count++;
 	//ensure that the data type is set before calling this function
