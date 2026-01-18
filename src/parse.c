@@ -18,9 +18,9 @@ static void MOVE(OPERAND dest, OPERAND src)
 			MOV_R64R64(dest.value, src.value, sizeof_data(dest.data_type));
 		else if (src.type == TOFFSET)
 			if (!PTR(dest.data_type))
-				MOV_R64OFF(dest.value, src.off, src.off_type, src.base_ptr, sizeof_data(dest.data_type));
+				MOV_R64OFF(dest.value, src.off, src.off_type, src.base_ptr, sizeof_data(dest.data_type), src.pos);
 		else
-			LEA(dest.value, src.off, src.off_type, src.base_ptr, sizeof_data(dest.data_type));
+			LEA(dest.value, src.off, src.off_type, src.base_ptr, sizeof_data(dest.data_type), src.pos);
 		if (src.type == TSEG_DATA || src.type == TSEG_BSS)
 		{
 			if (!PTR(dest.data_type))
@@ -35,12 +35,12 @@ static void MOVE(OPERAND dest, OPERAND src)
 		{
 			REGISTER tmp = reg_alloc();
 			MOV_R64I(tmp, src.value, sizeof_data(dest.data_type));
-			MOV_OFFR64(dest.off, dest.off_type, dest.base_ptr, tmp, sizeof_data(dest.data_type));
+			MOV_OFFR64(dest.off, dest.off_type, dest.base_ptr, tmp, sizeof_data(dest.data_type), dest.pos);
 			reg_free(tmp);
 		}
 		//MOV_OFFI(dest.off, dest.off_type, dest.base_ptr, src.value, sizeof_data(dest.data_type));
 		else if (src.type == TREGISTER)
-			MOV_OFFR64(dest.off, dest.off_type, dest.base_ptr, src.value, sizeof_data(dest.data_type));
+			MOV_OFFR64(dest.off, dest.off_type, dest.base_ptr, src.value, sizeof_data(dest.data_type), dest.pos);
 		else if (src.type == TOFFSET)
 		{
 			/*x86 doesn't allow for MOV addr, addr
@@ -48,15 +48,15 @@ static void MOVE(OPERAND dest, OPERAND src)
 			*/
 			REGISTER tmp = reg_alloc();
 			//TODO: make sure sizeof_data is also there in stack offsets
-			MOV_R64OFF(tmp, src.off, src.off_type, src.base_ptr, sizeof_data(src.data_type));
-			MOV_OFFR64(dest.off, dest.off_type, dest.base_ptr, tmp, sizeof_data(dest.data_type));
+			MOV_R64OFF(tmp, src.off, src.off_type, src.base_ptr, sizeof_data(src.data_type), src.pos);
+			MOV_OFFR64(dest.off, dest.off_type, dest.base_ptr, tmp, sizeof_data(dest.data_type), dest.pos);
 			reg_free(tmp);
 		}
 		else if (src.type == TSEG_DATA || src.type == TSEG_BSS)
 		{
 			REGISTER tmp = reg_alloc();
 			MOV_R64D(tmp, src.id, sizeof_data(src.data_type));
-			MOV_OFFR64(dest.off, dest.off_type, dest.base_ptr, tmp, sizeof_data(dest.data_type));
+			MOV_OFFR64(dest.off, dest.off_type, dest.base_ptr, tmp, sizeof_data(dest.data_type), dest.pos);
 			reg_free(tmp);
 		}
 	}
@@ -76,7 +76,7 @@ static void MOVE(OPERAND dest, OPERAND src)
 		else if (src.type == TOFFSET)
 		{
 			REGISTER tmp = reg_alloc();
-			MOV_R64OFF(tmp, src.off, src.off_type, src.base_ptr, QWORD);
+			MOV_R64OFF(tmp, src.off, src.off_type, src.base_ptr, QWORD, src.pos);
 			MOV_DR64(dest.id, tmp, sizeof_data(dest.data_type));
 			reg_free(tmp);
 		}
@@ -194,11 +194,12 @@ static void parse_prefix(OPERAND *dest)
 		src.off_type = 0;
 		src.base_ptr = registers[reg_alloc()];
 		src.off = 0;
+		src.pos = 0;
 		read_token();
 		parse_factor(&src);
 		if (dest->type == TREGISTER)
 			//MOV_R64D(dest->value, registers[src.value], sizeof_data(dest->data_type));
-			MOV_R64OFF(dest->value, src.off, src.off_type, src.base_ptr, sizeof_data(dest->data_type));
+			MOV_R64OFF(dest->value, src.off, src.off_type, src.base_ptr, sizeof_data(dest->data_type), src.pos);
 		else  if (dest->type == TSEG_DATA || dest->type == TSEG_BSS)
 		{
 			OPERAND tmp;
@@ -663,6 +664,7 @@ static void parse_declaration(int flags)
 				var.type = TOFFSET;
 				var.off = current_scope->offset;
 				var.off_type = TIMMEDIATE;
+				var.pos = false;
 			}
 			add_variable(var, current_scope);
 			parse_assignment(&var);
@@ -752,6 +754,7 @@ static void parse_declaration(int flags)
 				}
 				else if (token.class == TIDENTIFIER)
 				{
+					var.pos = true;
 					var.id = token.id;
 					var.type = TOFFSET;
 					var.off = offset;
@@ -805,7 +808,7 @@ scope:
 					func->vars[i].value = reg;*/
 					add_variable(func->vars[i], current_scope);
 				}
-
+				current_scope->offset = 8;
 				//parse_scope();
 				/*TODO: parse_scope sucks; make parse_statement except
 				 it has while (token.class != '}' instead of TEOF)*/

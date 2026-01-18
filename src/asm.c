@@ -181,7 +181,7 @@ void MOV_R64I(int dest, int src, int size)
 	}
 }
 
-void MOV_R64OFF(int dest, int off, int off_type, char *base_ptr, int size)
+void MOV_R64OFF(int dest, int off, int off_type, char *base_ptr, int size, bool pos)
 {
 	writec(9, SECT_CODE);
 	write_strn("MOV ", 4, SECT_CODE);
@@ -203,63 +203,125 @@ void MOV_R64OFF(int dest, int off, int off_type, char *base_ptr, int size)
 
 	write_strn(", ", 2, SECT_CODE);
 	char tmp[100];
-	if (off_type == TIMMEDIATE)
+	if (pos)
 	{
-		if (off > 0)
-			sprintf(tmp, "[%s+%d]", base_ptr, off);
-		else
-			sprintf(tmp, "[%s]", base_ptr);
-	}
-	else if (off_type == TREGISTER)
-	{
-		switch (size)
+		if (off_type == TIMMEDIATE)
 		{
-		case QWORD:
-			sprintf(tmp, "[%s+%s]", base_ptr, registers[off]);
-			break;
-		case DWORD:
-			sprintf(tmp, "[%s+%s]", base_ptr, registers32[off]);
-			break;
-		case WORD:
-			sprintf(tmp, "[%s+%s]", base_ptr, registers16[off]);
-			break;
-		case BYTE:
-			sprintf(tmp, "[%s+%s]", base_ptr, registers8[off]);
-			break;
+			if (off > 0)
+				sprintf(tmp, "[%s+%d]", base_ptr, off);
+			else
+				sprintf(tmp, "[%s]", base_ptr);
+		}
+		else if (off_type == TREGISTER)
+		{
+			switch (size)
+			{
+			case QWORD:
+				sprintf(tmp, "[%s+%s]", base_ptr, registers[off]);
+				break;
+			case DWORD:
+				sprintf(tmp, "[%s+%s]", base_ptr, registers32[off]);
+				break;
+			case WORD:
+				sprintf(tmp, "[%s+%s]", base_ptr, registers16[off]);
+				break;
+			case BYTE:
+				sprintf(tmp, "[%s+%s]", base_ptr, registers8[off]);
+				break;
+			}
+		}
+	}
+	else
+	{
+		if (off_type == TIMMEDIATE)
+		{
+			if (off > 0)
+				sprintf(tmp, "[%s-%d]", base_ptr, off);
+			else
+				sprintf(tmp, "[%s]", base_ptr);
+		}
+		else if (off_type == TREGISTER)
+		{
+			switch (size)
+			{
+			case QWORD:
+				sprintf(tmp, "[%s-%s]", base_ptr, registers[off]);
+				break;
+			case DWORD:
+				sprintf(tmp, "[%s-%s]", base_ptr, registers32[off]);
+				break;
+			case WORD:
+				sprintf(tmp, "[%s-%s]", base_ptr, registers16[off]);
+				break;
+			case BYTE:
+				sprintf(tmp, "[%s-%s]", base_ptr, registers8[off]);
+				break;
+			}
 		}
 	}
 	write_str(tmp, SECT_CODE);
 	writec('\n', SECT_CODE);
 }
 
-void MOV_OFFR64(int off, int off_type, char *base_ptr, int src, int size)
+void MOV_OFFR64(int off, int off_type, char *base_ptr, int src, int size, bool pos)
 {
 	writec(9, SECT_CODE);
 	write_strn("MOV ", 4, SECT_CODE);
 	char tmp[100];
-	if (off_type == TIMMEDIATE)
+	if (pos)
 	{
-		if (off > 0)
-			sprintf(tmp, "[%s+%d]", base_ptr, off);
-		else
-			sprintf(tmp, "[%s]", base_ptr, off);
-	}
-	else if (off_type == TREGISTER)
-	{
-		switch (size)
+		if (off_type == TIMMEDIATE)
 		{
-		case QWORD:
-			sprintf(tmp, "[%s+%s]", base_ptr, registers[off]);
-			break;
-		case DWORD:
-			sprintf(tmp, "[%s+%s]", base_ptr, registers32[off]);
-			break;
-		case WORD:
-			sprintf(tmp, "[%s+%s]", base_ptr, registers16[off]);
-			break;
-		case BYTE:
-			sprintf(tmp, "[%s+%s]", base_ptr, registers8[off]);
-			break;
+			if (off > 0)
+				sprintf(tmp, "[%s+%d]", base_ptr, off);
+			else
+				sprintf(tmp, "[%s]", base_ptr);
+		}
+		else if (off_type == TREGISTER)
+		{
+			switch (size)
+			{
+			case QWORD:
+				sprintf(tmp, "[%s+%s]", base_ptr, registers[off]);
+				break;
+			case DWORD:
+				sprintf(tmp, "[%s+%s]", base_ptr, registers32[off]);
+				break;
+			case WORD:
+				sprintf(tmp, "[%s+%s]", base_ptr, registers16[off]);
+				break;
+			case BYTE:
+				sprintf(tmp, "[%s+%s]", base_ptr, registers8[off]);
+				break;
+			}
+		}
+	}
+	else
+	{
+		if (off_type == TIMMEDIATE)
+		{
+			if (off > 0)
+				sprintf(tmp, "[%s-%d]", base_ptr, off);
+			else
+				sprintf(tmp, "[%s]", base_ptr);
+		}
+		else if (off_type == TREGISTER)
+		{
+			switch (size)
+			{
+			case QWORD:
+				sprintf(tmp, "[%s-%s]", base_ptr, registers[off]);
+				break;
+			case DWORD:
+				sprintf(tmp, "[%s-%s]", base_ptr, registers32[off]);
+				break;
+			case WORD:
+				sprintf(tmp, "[%s-%s]", base_ptr, registers16[off]);
+				break;
+			case BYTE:
+				sprintf(tmp, "[%s-%s]", base_ptr, registers8[off]);
+				break;
+			}
 		}
 	}
 	write_str(tmp, SECT_CODE);
@@ -282,29 +344,55 @@ void MOV_OFFR64(int off, int off_type, char *base_ptr, int src, int size)
 	writec('\n', SECT_CODE);
 }
 
-void MOV_OFFI(int off, int off_type, char *base_ptr, int src, int size)
+void MOV_OFFI(int off, int off_type, char *base_ptr, int src, int size, bool pos)
 {
 	writec(9, SECT_CODE);
 	write_strn("MOV ", 4, SECT_CODE);
 	char tmp[100];
-	if (off_type == TIMMEDIATE)
-		sprintf(tmp, "[%s+%d]", base_ptr, off);
-	else if (off_type == TREGISTER)
+	if (pos)
 	{
-		switch (size)
+		if (off_type == TIMMEDIATE)
+			sprintf(tmp, "[%s+%d]", base_ptr, off);
+		else if (off_type == TREGISTER)
 		{
-		case QWORD:
-			sprintf(tmp, "[%s+%s]", base_ptr, registers[off]);
-			break;
-		case DWORD:
-			sprintf(tmp, "[%s+%s]", base_ptr, registers32[off]);
-			break;
-		case WORD:
-			sprintf(tmp, "[%s+%s]", base_ptr, registers16[off]);
-			break;
-		case BYTE:
-			sprintf(tmp, "[%s+%s]", base_ptr, registers8[off]);
-			break;
+			switch (size)
+			{
+			case QWORD:
+				sprintf(tmp, "[%s+%s]", base_ptr, registers[off]);
+				break;
+			case DWORD:
+				sprintf(tmp, "[%s+%s]", base_ptr, registers32[off]);
+				break;
+			case WORD:
+				sprintf(tmp, "[%s+%s]", base_ptr, registers16[off]);
+				break;
+			case BYTE:
+				sprintf(tmp, "[%s+%s]", base_ptr, registers8[off]);
+				break;
+			}
+		}
+	}
+	else
+	{
+		if (off_type == TIMMEDIATE)
+			sprintf(tmp, "[%s-%d]", base_ptr, off);
+		else if (off_type == TREGISTER)
+		{
+			switch (size)
+			{
+			case QWORD:
+				sprintf(tmp, "[%s-%s]", base_ptr, registers[off]);
+				break;
+			case DWORD:
+				sprintf(tmp, "[%s-%s]", base_ptr, registers32[off]);
+				break;
+			case WORD:
+				sprintf(tmp, "[%s-%s]", base_ptr, registers16[off]);
+				break;
+			case BYTE:
+				sprintf(tmp, "[%s-%s]", base_ptr, registers8[off]);
+				break;
+			}
 		}
 	}
 
@@ -452,7 +540,7 @@ void MOV_DI(char *str, int src, int size)
 }
 
 
-void LEA(int dest, int off, int off_type, char *base_ptr, int size)
+void LEA(int dest, int off, int off_type, char *base_ptr, int size, bool pos)
 {
 	writec(9, SECT_CODE);
 	write_strn("LEA ", 4, SECT_CODE);
@@ -473,24 +561,50 @@ void LEA(int dest, int off, int off_type, char *base_ptr, int size)
 	}
 	write_strn(", ", 2, SECT_CODE);
 	char tmp[100];
-	if (off_type == TIMMEDIATE)
-		sprintf(tmp, "[%s+%d]", base_ptr, off);
-	else if (off_type == TREGISTER)
+	if (pos)
 	{
-		switch (size)
+		if (off_type == TIMMEDIATE)
+			sprintf(tmp, "[%s+%d]", base_ptr, off);
+		else if (off_type == TREGISTER)
 		{
-		case QWORD:
-			sprintf(tmp, "[%s+%s]", base_ptr, registers[off]);
-			break;
-		case DWORD:
-			sprintf(tmp, "[%s+%s]", base_ptr, registers32[off]);
-			break;
-		case WORD:
-			sprintf(tmp, "[%s+%s]", base_ptr, registers16[off]);
-			break;
-		case BYTE:
-			sprintf(tmp, "[%s+%s]", base_ptr, registers8[off]);
-			break;
+			switch (size)
+			{
+			case QWORD:
+				sprintf(tmp, "[%s+%s]", base_ptr, registers[off]);
+				break;
+			case DWORD:
+				sprintf(tmp, "[%s+%s]", base_ptr, registers32[off]);
+				break;
+			case WORD:
+				sprintf(tmp, "[%s+%s]", base_ptr, registers16[off]);
+				break;
+			case BYTE:
+				sprintf(tmp, "[%s+%s]", base_ptr, registers8[off]);
+				break;
+			}
+		}
+	}
+	else
+	{
+		if (off_type == TIMMEDIATE)
+			sprintf(tmp, "[%s-%d]", base_ptr, off);
+		else if (off_type == TREGISTER)
+		{
+			switch (size)
+			{
+			case QWORD:
+				sprintf(tmp, "[%s-%s]", base_ptr, registers[off]);
+				break;
+			case DWORD:
+				sprintf(tmp, "[%s-%s]", base_ptr, registers32[off]);
+				break;
+			case WORD:
+				sprintf(tmp, "[%s-%s]", base_ptr, registers16[off]);
+				break;
+			case BYTE:
+				sprintf(tmp, "[%s-%s]", base_ptr, registers8[off]);
+				break;
+			}
 		}
 	}
 	write_str(tmp, SECT_CODE);

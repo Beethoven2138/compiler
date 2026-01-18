@@ -77,6 +77,12 @@ typedef struct _operand
 			char* base_ptr;
 		};
 	};
+	/*
+	  Whether or not the offset shoudl be positive or negative, iff applicable.
+	  .data/.bss/function arguments -> positive
+	  local variables -> negative
+	 */
+	bool pos;
 
 	//For unions
 	struct _operand *next;
@@ -107,9 +113,9 @@ void reg_free(REGISTER reg);
 void MOV_R64R64(int dest, int src, int size);
 void MOV_R64I(int dest, int src, int size);
 
-void MOV_R64OFF(int dest, int off, int off_type, char *base_ptr, int size);
-void MOV_OFFR64(int off, int off_type, char *base_ptr, int src, int size);
-void MOV_OFFI(int off, int off_type, char *base_ptr, int src, int size);
+void MOV_R64OFF(int dest, int off, int off_type, char *base_ptr, int size, bool pos);
+void MOV_OFFR64(int off, int off_type, char *base_ptr, int src, int size, bool pos);
+void MOV_OFFI(int off, int off_type, char *base_ptr, int src, int size, bool pos);
 
 void MOV_DR64(char *str, int src, int size);
 void MOV_R64D(int dest, char *src, int size);
@@ -117,7 +123,7 @@ void MOV_DI(char *str, int src, int size);
 
 void MOV_R64ADR(int dest, char *str, int size);
 
-void LEA(int dest, int off, int off_type, char *base_ptr, int size);
+void LEA(int dest, int off, int off_type, char *base_ptr, int size, bool pos);
 
 void ADD_R64R64(int dest, int src, int size1, int size2);
 void ADD_R64I(int dest, int src, int size);
