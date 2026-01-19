@@ -843,6 +843,61 @@ void POP(int dest, int size)
 	writec('\n', SECT_CODE);
 }
 
+void PUSH_OFF(int off, int off_type, char *base_ptr, int size, bool pos)
+{
+	writec(9, SECT_CODE);
+	write_strn("PUSH ", 5, SECT_CODE);
+	char tmp[100];
+	if (pos)
+	{
+		if (off_type == TIMMEDIATE)
+			sprintf(tmp, "[%s+%d]", base_ptr, off);
+		else if (off_type == TREGISTER)
+		{
+			switch (size)
+			{
+			case QWORD:
+				sprintf(tmp, "[%s+%s]", base_ptr, registers[off]);
+				break;
+			case DWORD:
+				sprintf(tmp, "[%s+%s]", base_ptr, registers32[off]);
+				break;
+			case WORD:
+				sprintf(tmp, "[%s+%s]", base_ptr, registers16[off]);
+				break;
+			case BYTE:
+				sprintf(tmp, "[%s+%s]", base_ptr, registers8[off]);
+				break;
+			}
+		}
+	}
+	else
+	{
+		if (off_type == TIMMEDIATE)
+			sprintf(tmp, "[%s-%d]", base_ptr, off);
+		else if (off_type == TREGISTER)
+		{
+			switch (size)
+			{
+			case QWORD:
+				sprintf(tmp, "[%s-%s]", base_ptr, registers[off]);
+				break;
+			case DWORD:
+				sprintf(tmp, "[%s-%s]", base_ptr, registers32[off]);
+				break;
+			case WORD:
+				sprintf(tmp, "[%s-%s]", base_ptr, registers16[off]);
+				break;
+			case BYTE:
+				sprintf(tmp, "[%s-%s]", base_ptr, registers8[off]);
+				break;
+			}
+		}
+	}
+	write_str(tmp, SECT_CODE);
+	writec('\n', SECT_CODE);
+}
+
 void JMP(char *routine)
 {
 	writec(9, SECT_CODE);

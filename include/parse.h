@@ -32,6 +32,7 @@ typedef struct SCOPE
 	int var_index;
 	OPERAND *vars;
 	unsigned int offset;
+	int local_var_sum;
 } SCOPE;
 
 typedef struct FUNCTION

@@ -138,6 +138,8 @@ void DIV_R64(int src, int size);
 void PUSH(int src, int size);
 void POP(int dest, int size);
 
+void PUSH_OFF(int off, int off_type, char *base_ptr, int size, bool pos);
+
 void JMP(char *routine);
 void JZ(char *routine);//if 0
 void JNZ(char *routine);//if !0

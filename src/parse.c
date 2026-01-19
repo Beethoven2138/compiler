@@ -570,7 +570,7 @@ static void parse_logic(OPERAND *dest)
 			sprintf(else_routine, "_rlog_%d", routine);
 			sprintf(end_routine, "_rendlog_%d", routine);
 			routine++;
-			JNE(else_routine);
+			JE(else_routine);
 			MOV_R64I(dest->value, 1, sizeof_data(dest->data_type));
 			JMP(end_routine);
 			write_str(else_routine, SECT_CODE);
@@ -594,7 +594,7 @@ static void parse_logic(OPERAND *dest)
 			sprintf(else_routine, "_rlog_%d", routine);
 			sprintf(end_routine, "_rendlog_%d", routine);
 			routine++;
-			JNE(else_routine);
+			JE(else_routine);
 			MOV_R64I(dest->value, 1, sizeof_data(dest->data_type));
 			JMP(end_routine);
 			write_str(else_routine, SECT_CODE);
@@ -808,16 +808,50 @@ scope:
 					func->vars[i].value = reg;*/
 					add_variable(func->vars[i], current_scope);
 				}
-				current_scope->offset = 8;
+				current_scope->offset = 16;
 				//parse_scope();
 				/*TODO: parse_scope sucks; make parse_statement except
 				 it has while (token.class != '}' instead of TEOF)*/
+				int local_vars_sum = 0;
+				int left_cnt = 1;
+				int right_cnt = 0;
+				int i = 0;
+				int index = fin->buff->index;
+				TOKEN old_prev = prev_token;
+				TOKEN old = token;
+				while (right_cnt < left_cnt)
+				{
+					read_token();
+					++i;
+					if (token.class == '{')
+						++left_cnt;
+					else if (token.class == '}')
+						++right_cnt;
+					else if (token.class == TKEYWORD && token.value < STRUCT)
+						local_vars_sum += sizeof_data(token.value);
+				}
+				fin->buff->index = index;
+				/*while (i > 0)
+				{
+					unread_token();
+					--i;
+				}*/
+				prev_token = old_prev;
+				token = old;
+				current_scope->local_var_sum = local_vars_sum;
+				writec(9, SECT_CODE);
+				write_strn("SUB RSP, ", 9, SECT_CODE);
+				char tmp1[100];
+				sprintf(tmp1, "%d\n", local_vars_sum);
+				write_str(tmp1, SECT_CODE);
 				parse_statement('}');
 				for (int i = 0; i < func->var_count; i++)
 				{
 					reg_free(func->vars[i].value);
 				}
-				//writec(9);
+				/*writec(9, SECT_CODE);
+				write_strn("ADD RSP, ", 9, SECT_CODE);
+				write_str(tmp1, SECT_CODE);*/
 				if (func->type == VOID && strcmp(func->name, "main"))
 					func_epilog();
 				else if (!strcmp(func->name, "main"))
@@ -1193,6 +1227,11 @@ void parse_statement(int stop)
 				rax.value = RAX;
 				rax.data_type = ret.data_type;
 				MOVE(rax, ret);
+				char tmp1[100];
+				sprintf(tmp1, "%d\n", current_scope->local_var_sum);
+				writec(9, SECT_CODE);
+				write_strn("ADD RSP, ", 9, SECT_CODE);
+				write_str(tmp1, SECT_CODE);
 				writec(9, SECT_CODE);
 				func_epilog();
 			}
@@ -1244,6 +1283,27 @@ static void add_variable(OPERAND var, SCOPE *scope)
 	scope->vars[scope->var_index++] = var;
 	//ENSURE THAT VAR.DATA_TYPE IS SET BEFORE HERE!!!
 	scope->offset += sizeof_data(var.data_type);
+	/*if (var.type == TOFFSET && !var.pos)
+	{
+		writec(9, SECT_CODE);
+		write_strn("SUB RSP, ", 9, SECT_CODE);
+		switch(sizeof_data(var.data_type))
+		{
+		case QWORD:
+			writec('8', SECT_CODE);
+			break;
+		case DWORD:
+			writec('4', SECT_CODE);
+			break;
+		case WORD:
+			writec('2', SECT_CODE);
+			break;
+		case BYTE:
+			writec('1', SECT_CODE);
+			break;
+		}
+		writec('\n', SECT_CODE);
+		}*/
 }
 
 static SCOPE* add_scope(SCOPE *parent, SCOPE *child, SCOPE *prev, SCOPE *next)
@@ -1411,18 +1471,23 @@ static void call_function(char *func_name)
         FUNCTION func = *find_function(func_name);
         OPERAND vars[func.var_count];
 	int var_index = 0;
+	int sum = 0;
 	while (token.class != ')')
 	{
 		if (token.class == TIDENTIFIER)
 		{
 			OPERAND *var;
 			var = (find_var(current_scope, token.id));
+			sum += sizeof_data(var->data_type);
 			switch (var-> type)
 			{
 			case TREGISTER:
 				PUSH(var->value, sizeof_data(var->data_type));
+				break;
 			case TOFFSET:
-
+				//PUSH_OFF(int off, int off_type, char *base_ptr, int size, bool pos)
+				PUSH_OFF(var->off, var->off_type, var->base_ptr, sizeof_data(var->data_type), var->pos);
+				break;
 			case TSEG_DATA:
 
 			case TSEG_BSS:
@@ -1436,8 +1501,13 @@ static void call_function(char *func_name)
 		read_token();
 	}
 	CALL(func_name);
-	for (int i = var_index-1; i >= 0; i--)
+	/*for (int i = var_index-1; i >= 0; i--)
 	{
 		POP(vars[i].value, sizeof_data(vars[i].data_type));
-	}
+		}*/
+	writec(9, SECT_CODE);
+	write_strn("ADD RSP, ", 9, SECT_CODE);
+	char tmp[100];
+	sprintf(tmp, "%d\n", sum);
+	write_str(tmp, SECT_CODE);
 }
