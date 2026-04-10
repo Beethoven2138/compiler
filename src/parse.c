@@ -1411,7 +1411,7 @@ static OPERAND* find_var_in_scope(SCOPE scope, char *id)
 static void add_function(FUNCTION *func)
 {
 	if (func_list.index == func_list.length)
-		func_list.funcs = realloc(func_list.funcs, (func_list.length + 1)*sizeof(FUNCTION_LIST));
+		func_list.funcs = realloc(func_list.funcs, (func_list.length + 1)*sizeof(FUNCTION*));
 	func_list.length++;
 
 	func_list.funcs[func_list.index++] = func;
