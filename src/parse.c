@@ -1332,7 +1332,8 @@ static void free_scope(SCOPE *scope)
 
 	for (int i = 0; i < scope->var_length && i < scope->var_index; i++)
 	{
-		reg_free(scope->vars[i].value);
+		if (scope->vars[i].type == TREGISTER)
+			reg_free(scope->vars[i].value);
 		free(scope->vars[i].id);
 	}
 	if (scope->next != NULL || scope->prev != NULL)
