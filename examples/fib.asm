@@ -15,8 +15,10 @@ _scope_start1:
 	MOV [RBP-24], R14
 	XOR R13, R13
 	MOV [RBP-32], R13
+_scope_start2:
 	XOR R12, R12
 	MOV [RBP-40], R12
+_scope_end2:
 _loop0:
 	MOV R11, [RBP-40]
 	MOV R10, 10
@@ -29,7 +31,7 @@ _rif_0:
 _rend_0:
 	CMP R11, 1
 	JNE _loop_end0
-_scope_start2:
+_scope_start3:
 	MOV R10, [RBP-40]
 	MOV R9, 2
 	CMP R10, R9
@@ -41,7 +43,7 @@ _rif_1:
 _rend_1:
 	CMP R10, 1
 	JNE rcondelse_0
-_scope_start3:
+_scope_start4:
 	MOV R10, [RBP-16]
 	MOV R9, [RBP-24]
 	ADD R10, R9
@@ -50,15 +52,17 @@ _scope_start3:
 	MOV [RBP-24], R9
 	MOV R8, [RBP-32]
 	MOV [RBP-16], R8
-_scope_end3:
+_scope_end4:
 	JMP rcondend_0
 rcondelse_0:
 rcondend_0:
+_scope_end3:
+_scope_start5:
 	MOV R10, [RBP-40]
 	MOV RBX, 1
 	ADD R10, RBX
 	MOV [RBP-40], R10
-_scope_end2:
+_scope_end5:
 	JMP _loop0
 _loop_end0:
 _scope_end1:

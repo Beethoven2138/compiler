@@ -29,6 +29,10 @@ _rend_0:
 	JNE _loop_end0
 _scope_start3:
 	MOV R12, 3
+	MOV R11, [RBP-24]
+	MOV RAX, R12
+	MUL R11
+	MOV R12, RAX
 	MOV [RBP-32], R12
 _scope_end3:
 _scope_start4:

@@ -67,8 +67,8 @@ _scope_end3:
 	JMP rcondend_0
 rcondelse_0:
 _scope_start4:
-	MOV R15, 4556
-	MOV [RBP-16], R15
+	MOV R12, 4556
+	MOV [RBP-16], R12
 _scope_end4:
 rcondend_0:
 	PUSH [RBP-24]
@@ -77,20 +77,20 @@ rcondend_0:
 	MOV R13, RAX
 	MOV [RBP-24], R13
 _loop0:
-	MOV R12, [RBP-16]
-	MOV R11, 45
-	CMP R12, R11
+	MOV R11, [RBP-16]
+	MOV R10, 45
+	CMP R11, R10
 	JE _rif_2
-	MOV R12, 1
+	MOV R11, 1
 	JMP _rend_2
 _rif_2:
-	XOR R12, R12
+	XOR R11, R11
 _rend_2:
-	CMP R12, 1
+	CMP R11, 1
 	JNE _loop_end0
 _scope_start5:
-	MOV R11, 45
-	MOV [RBP-16], R11
+	MOV R10, 45
+	MOV [RBP-16], R10
 _scope_end5:
 	JMP _loop0
 _loop_end0:

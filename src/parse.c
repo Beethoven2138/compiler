@@ -1053,6 +1053,9 @@ static void parse_loop(void)
 	}
 	else if (token.value == FOR)
 	{
+		unsigned int offset = current_scope->offset;
+		current_scope = add_scope(current_scope, NULL, NULL, NULL);
+		current_scope->offset = offset;
 		read_token();
 		parse_statement(';');
 		read_token();
@@ -1063,9 +1066,9 @@ static void parse_loop(void)
 		sprintf(loop_end, "_loop_end%d", routine++);
 		write_str(loop, SECT_CODE);
 		write_strn(":\n", 2, SECT_CODE);
-		unsigned int offset = current_scope->offset;
+		/*unsigned int offset = current_scope->offset;
 		current_scope = add_scope(current_scope, NULL, NULL, NULL);
-		current_scope->offset = offset;
+		current_scope->offset = offset;*/
 		OPERAND dest;
 		dest.type = TREGISTER;
 		dest.value = reg_alloc();
@@ -1095,9 +1098,9 @@ static void parse_loop(void)
 		while (token.class != '{')
 			read_token();
 		//EXPERIMENTAL!!!
-	        offset = current_scope->offset;
+	        /*offset = current_scope->offset;
 		current_scope = add_scope(current_scope, NULL, NULL, NULL);
-		current_scope->offset = offset;
+		current_scope->offset = offset;*/
 
 		parse_statement('}');
 		int end_loop_pos = fin->buff->index;
