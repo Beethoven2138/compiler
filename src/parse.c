@@ -1442,7 +1442,7 @@ static FUNCTION* find_function(char *name)
 	return NULL;
 }
 
-static void free_functions(void)
+void free_functions(void)
 {
 	for (int i = 0; i < func_list.length; i++)
 	{

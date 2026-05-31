@@ -92,7 +92,7 @@ static void add_function(FUNCTION *func);
 static FUNCTION* create_function(char *name, OPERAND *vars, int var_count, int type, unsigned int offset);
 
 static FUNCTION* find_function(char *name);
-static void free_functions(void);
+void free_functions(void);
 static void add_funcvar(FUNCTION *func, OPERAND var);
 
 static void call_function(char *func_name);
