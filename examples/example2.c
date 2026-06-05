@@ -1,7 +1,10 @@
-uint64_t efunc(uint64_t uuu)
+uint64_t efunc(uint64_t a)
 {
-	uint64_t u = uuu;
-	return u;
+        if (a > 2)
+	{
+		return 2 * a;
+	}
+	return a + 3;
 }
 
 void main(void)

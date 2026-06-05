@@ -20,6 +20,15 @@ typedef struct _variable
 	//TODO: add conditions for when all the registers are used up
 } VARIABLE;
 
+typedef struct FUNCTION
+{
+	char *name;
+	OPERAND *vars;
+	int var_count;
+	int type;
+	unsigned int offset;
+} FUNCTION;
+
 typedef struct SCOPE
 {
 	struct SCOPE *parent;
@@ -33,16 +42,12 @@ typedef struct SCOPE
 	OPERAND *vars;
 	unsigned int offset;
 	int local_var_sum;
+
+	FUNCTION *func; /*the function the scope is within.
+			  NULL if not in a function*/
 } SCOPE;
 
-typedef struct FUNCTION
-{
-	char *name;
-	OPERAND *vars;
-	int var_count;
-	int type;
-	unsigned int offset;
-} FUNCTION;
+
 
 typedef struct
 {
@@ -77,7 +82,7 @@ static void parse_scope(void);
 
 static void add_variable(OPERAND var, SCOPE *scope);
 
-static SCOPE* add_scope(SCOPE *parent, SCOPE *child, SCOPE *prev, SCOPE *next);
+static SCOPE* add_scope(SCOPE *parent, SCOPE *child, SCOPE *prev, SCOPE *next, FUNCTION *func);
 
 void init_scope(void);
 

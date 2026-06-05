@@ -717,8 +717,9 @@ static void parse_declaration(int flags)
 	}
 	else if (token.class == TFUNCTION)
 	{
-		if (current_scope != parent)
-			assert(0);
+		/*if (current_scope != parent)
+		  assert(0);*/
+		current_scope = parent;
 		OPERAND *vars;
 		FUNCTION *func;
 		func = find_function(token.id);
@@ -793,9 +794,9 @@ scope:
 				write_str(func->name, SECT_CODE);
 				write_strn(":\n", 2, SECT_CODE);
 
-				current_scope = add_scope(parent, NULL, NULL, NULL);
+				current_scope = add_scope(parent, NULL, NULL, NULL, func);
 				//if (strcmp(func->name, "main"))
-					func_prolog();
+				func_prolog();
 			        REGISTER reg;
 				for (int i = 0; i < func->var_count; i++)
 				{
@@ -901,7 +902,7 @@ static void parse_condition(void)
 	if (token.class == '{')
 	{
 		unsigned int offset = current_scope->offset;
-		current_scope = add_scope(current_scope, NULL, NULL, NULL);
+		current_scope = add_scope(current_scope, NULL, NULL, NULL, NULL);
 		current_scope->offset = offset;
 		parse_statement('}');
 		JMP(end_routine);
@@ -930,7 +931,7 @@ static void parse_condition(void)
 
 
 			unsigned int offset = current_scope->offset;
-			current_scope = add_scope(current_scope, NULL, NULL, NULL);
+			current_scope = add_scope(current_scope, NULL, NULL, NULL, NULL);
 			current_scope->offset = offset;
 			parse_statement('}');
 			read_token();
@@ -1007,7 +1008,7 @@ static void parse_loop(void)
 		write_str(loop, SECT_CODE);
 		write_strn(":\n", 2, SECT_CODE);
 		unsigned int offset = current_scope->offset;
-		current_scope = add_scope(current_scope, NULL, NULL, NULL);
+		current_scope = add_scope(current_scope, NULL, NULL, NULL, NULL);
 		current_scope->offset = offset;
 		read_token();
 		assert(token.class == '(');
@@ -1033,7 +1034,7 @@ static void parse_loop(void)
 		{
 			//EXPERIMENTAL!!!
 			unsigned int offset = current_scope->offset;
-			current_scope = add_scope(current_scope, NULL, NULL, NULL);
+			current_scope = add_scope(current_scope, NULL, NULL, NULL, NULL);
 			current_scope->offset = offset;
 
 
@@ -1054,7 +1055,7 @@ static void parse_loop(void)
 	else if (token.value == FOR)
 	{
 		unsigned int offset = current_scope->offset;
-		current_scope = add_scope(current_scope, NULL, NULL, NULL);
+		current_scope = add_scope(current_scope, NULL, NULL, NULL, NULL);
 		current_scope->offset = offset;
 		read_token();
 		parse_statement(';');
@@ -1216,7 +1217,7 @@ void parse_statement(int stop)
 			read_token();
 			if (token.class != ';')
 			{
-				OPERAND ret;
+				/*OPERAND ret;
 				if (token.class == TIDENTIFIER)
 				{
 					ret = *find_var(current_scope, token.id);
@@ -1224,12 +1225,30 @@ void parse_statement(int stop)
 				/*
 				When a function returns a value,
 				the value is always placed in RAX
-				*/
+				
 				OPERAND rax;
 				rax.type = TREGISTER;
 				rax.value = RAX;
 				rax.data_type = ret.data_type;
-				MOVE(rax, ret);
+				MOVE(rax, ret);*/
+				//OPERAND ret;
+				OPERAND rax = {.type = TREGISTER, .value = RAX, .data_type = current_scope->func->type};
+				//parse_expression(&rax);
+			        OPERAND tmp = {.type = TREGISTER, .data_type = current_scope->func->type, .value = reg_alloc()};
+				parse_expression(&tmp);
+				MOVE(rax, tmp);
+				reg_free(tmp.value);
+				char tmp1[100];
+				sprintf(tmp1, "%d\n", current_scope->local_var_sum);
+				writec(9, SECT_CODE);
+				write_strn("ADD RSP, ", 9, SECT_CODE);
+				write_str(tmp1, SECT_CODE);
+				writec(9, SECT_CODE);
+				func_epilog();
+				//read_token();
+			}
+			else
+			{
 				char tmp1[100];
 				sprintf(tmp1, "%d\n", current_scope->local_var_sum);
 				writec(9, SECT_CODE);
@@ -1238,7 +1257,7 @@ void parse_statement(int stop)
 				writec(9, SECT_CODE);
 				func_epilog();
 			}
-			read_token();
+			//read_token();
 		}
 		else if (token.class == TFUNCTION)
 		{
@@ -1248,7 +1267,7 @@ void parse_statement(int stop)
 		}
 		else if (token.class == '{')
 		{
-			current_scope = add_scope(current_scope, NULL, NULL, NULL);
+			current_scope = add_scope(current_scope, NULL, NULL, NULL, NULL);
 			parse_statement('}');
 			current_scope = current_scope->parent;
 			free_scope(current_scope->child);
@@ -1309,7 +1328,7 @@ static void add_variable(OPERAND var, SCOPE *scope)
 		}*/
 }
 
-static SCOPE* add_scope(SCOPE *parent, SCOPE *child, SCOPE *prev, SCOPE *next)
+static SCOPE* add_scope(SCOPE *parent, SCOPE *child, SCOPE *prev, SCOPE *next, FUNCTION *func)
 {
 	SCOPE *new = (SCOPE*)malloc(sizeof(SCOPE));
 	new->parent = parent;
@@ -1318,13 +1337,18 @@ static SCOPE* add_scope(SCOPE *parent, SCOPE *child, SCOPE *prev, SCOPE *next)
 	new->next = next;
 
 	if (parent)
+	{
 		new->parent->child = new;
+		new->func = parent->func;
+	}
 
 	new->var_length = 0;
 	new->var_index = 0;
 	new->vars = NULL/*(VARIABLE*)malloc(sizeof(VARIABLE) * 5)*/;
 	//CHECK THIS!!!
 	new->offset = 16;
+	if (func != NULL)
+		new->func = func;
 	return new;
 }
 
@@ -1385,7 +1409,7 @@ void free_whole_scope(SCOPE *parent)
 
 void init_scope(void)
 {
-	parent = add_scope(NULL, NULL, NULL, NULL);
+	parent = add_scope(NULL, NULL, NULL, NULL, NULL);
 	current_scope = parent;
 }
 
