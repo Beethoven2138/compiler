@@ -816,27 +816,35 @@ scope:
 				int local_vars_sum = 0;
 				int left_cnt = 1;
 				int right_cnt = 0;
-				int i = 0;
 				int index = fin->buff->index;
 				TOKEN old_prev = prev_token;
 				TOKEN old = token;
+				bool in_str = false;
+				bool in_char = false;
 				while (right_cnt < left_cnt)
 				{
 					read_token();
-					++i;
-					if (token.class == '{')
-						++left_cnt;
-					else if (token.class == '}')
-						++right_cnt;
-					else if (token.class == TKEYWORD && token.value < STRUCT)
-						local_vars_sum += sizeof_data(token.value);
+					if (token.class == '\'')
+					{
+						in_char = !in_char;
+						continue;
+					}
+					if (token.class == '"')
+					{
+						in_str = !in_str;
+						continue;
+					}
+					if (!(in_char || in_str))
+					{
+						if (token.class == '{')
+							++left_cnt;
+						else if (token.class == '}')
+							++right_cnt;
+						else if (token.class == TKEYWORD && token.value < STRUCT)
+							local_vars_sum += sizeof_data(token.value);
+					}
 				}
 				fin->buff->index = index;
-				/*while (i > 0)
-				{
-					unread_token();
-					--i;
-				}*/
 				prev_token = old_prev;
 				token = old;
 				current_scope->local_var_sum = local_vars_sum;
