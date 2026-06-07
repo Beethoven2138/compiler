@@ -14,6 +14,7 @@ enum
 	TOPERATOR,
 	TKEYWORD,
 	TFUNCTION,
+	TSTRING,
 };
 
 enum
