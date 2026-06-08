@@ -822,11 +822,6 @@ scope:
 				while (right_cnt < left_cnt)
 				{
 					read_token();
-					/*We want to ignore all { or } which occur within strings or as chars.
-					  In the case of chars, we'll assume the pre-processor converted 'x' into
-					  the corresponding 8-bit integer.*/
-					if (token.class == TSTRING)
-						continue;
 					if (token.class == '{')
 						++left_cnt;
 					else if (token.class == '}')
@@ -1498,12 +1493,12 @@ static void call_function(char *func_name)
         OPERAND vars[func.var_count];
 	int var_index = 0;
 	int sum = 0;
-	while (token.class != ')')
+	/*while (token.class != ')')
 	{
 		if (token.class == TIDENTIFIER)
 		{
 			OPERAND *var;
-			var = (find_var(current_scope, token.id));
+			var = find_var(current_scope, token.id);
 			sum += sizeof_data(var->data_type);
 			switch (var-> type)
 			{
@@ -1511,7 +1506,6 @@ static void call_function(char *func_name)
 				PUSH(var->value, sizeof_data(var->data_type));
 				break;
 			case TOFFSET:
-				//PUSH_OFF(int off, int off_type, char *base_ptr, int size, bool pos)
 				PUSH_OFF(var->off, var->off_type, var->base_ptr, sizeof_data(var->data_type), var->pos);
 				break;
 			case TSEG_DATA:
@@ -1525,12 +1519,71 @@ static void call_function(char *func_name)
 			//TODO: add stuff for non-registers
 		}
 		read_token();
-	}
-	CALL(func_name);
-	/*for (int i = var_index-1; i >= 0; i--)
-	{
-		POP(vars[i].value, sizeof_data(vars[i].data_type));
 		}*/
+	//The position in the file of the argument we need to push onto the stack.
+	int arg_pos_stack[func.var_count];
+	TOKEN arg_token_stack[func.var_count];
+	int token_index[func.var_count]; //The indexes in the file corresponding to the above tokens
+	int arg_index = 0;
+	int end_pos = 0; //position of the final ')' of the function
+	arg_pos_stack[arg_index++] = fin->buff->index;
+	arg_token_stack[0] = token;
+	token_index[0] = fin->buff->index;
+	TOKEN end_token;
+	while (arg_index < func.var_count)
+	{
+		read_token();
+		/*In case a function is called within a function argument.
+		  For example, a situation like func1(a,b,func2(c,d),e);*/
+		if (token.class == '(')
+		{
+			/*We follow a similar procedure to what we did in parse_declaration,
+			  counting the number of ( and ), and waiting for when they're equal*/
+			int left_cnt = 1;
+			int right_cnt = 0;
+			while (right_cnt < left_cnt)
+			{
+				read_token();
+				if (token.class == TSTRING)
+					continue;
+				if (token.class == '(')
+					++left_cnt;
+				else if (token.class == ')')
+					++right_cnt;
+			}
+		}
+		if (token.class == ',')
+		{
+			arg_pos_stack[arg_index] = fin->buff->index;
+			read_token();
+			arg_token_stack[arg_index] = token;
+			token_index[arg_index++] = fin->buff->index;
+			unread_token();
+		}
+	}
+
+	//We now work backwards, pushing the arguments onto the stack
+        while (--arg_index >= 0)
+	{
+		OPERAND tmp = {.type = TREGISTER, .data_type = func.vars->data_type, .value = reg_alloc()};
+		sum += sizeof_data(tmp.data_type);
+		fin->buff->index = arg_pos_stack[arg_index];
+		token = arg_token_stack[arg_index];
+		fin->buff->index = token_index[arg_index];
+		parse_expression(&tmp);
+		if (arg_index == func.var_count - 1)
+		{
+			end_pos = fin->buff->index;
+			end_token = token;
+		}
+		PUSH(tmp.value, sizeof_data(tmp.data_type));
+		reg_free(tmp.value);
+	}
+	if (end_pos != 0)
+		fin->buff->index = end_pos;
+	token = end_token;
+	//read_token();
+	CALL(func_name);
 	writec(9, SECT_CODE);
 	write_strn("ADD RSP, ", 9, SECT_CODE);
 	char tmp[100];
