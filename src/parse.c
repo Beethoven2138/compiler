@@ -1449,7 +1449,7 @@ static FUNCTION* create_function(char *name, OPERAND *vars, int var_count, int t
 	return function;
 }
 
-static FUNCTION* find_function(char *name)
+static FUNCTION* find_function(const char *name)
 {
 	for (int i = 0; i < func_list.length; i++)
 	{
@@ -1486,51 +1486,30 @@ static void add_funcvar(FUNCTION *func, OPERAND var)
 	func->offset += sizeof_data(var.data_type);
 }
 
-static void call_function(char *func_name)
+static void call_function(const char *func_name)
 {
 	read_token();
-        FUNCTION func = *find_function(func_name);
-        OPERAND vars[func.var_count];
-	int var_index = 0;
-	int sum = 0;
-	/*while (token.class != ')')
+        FUNCTION *func = find_function(func_name);
+	if (func->var_count == 0)
 	{
-		if (token.class == TIDENTIFIER)
-		{
-			OPERAND *var;
-			var = find_var(current_scope, token.id);
-			sum += sizeof_data(var->data_type);
-			switch (var-> type)
-			{
-			case TREGISTER:
-				PUSH(var->value, sizeof_data(var->data_type));
-				break;
-			case TOFFSET:
-				PUSH_OFF(var->off, var->off_type, var->base_ptr, sizeof_data(var->data_type), var->pos);
-				break;
-			case TSEG_DATA:
-
-			case TSEG_BSS:
-				break;
-			}
-			vars[var_index].data_type = var->data_type;
-			vars[var_index].value = var->value;
-			var_index++;
-			//TODO: add stuff for non-registers
-		}
+		do {read_token();} while (token.value != ')');
 		read_token();
-		}*/
+		CALL(func_name);
+		return;
+	}
+        OPERAND *vars = (OPERAND*)malloc(func->var_count * sizeof(OPERAND));
+	int sum = 0;
 	//The position in the file of the argument we need to push onto the stack.
-	int arg_pos_stack[func.var_count];
-	TOKEN arg_token_stack[func.var_count];
-	int token_index[func.var_count]; //The indexes in the file corresponding to the above tokens
-	int arg_index = 0;
+	int *arg_pos_stack = (int*)malloc(func->var_count * sizeof(int));
+	TOKEN *arg_token_stack = (TOKEN*)malloc(func->var_count * sizeof(TOKEN));
+	int *token_index = (int*)malloc(func->var_count * sizeof(int)); //The indexes in the file corresponding to the above tokens
+	int arg_index = 1;
 	int end_pos = 0; //position of the final ')' of the function
-	arg_pos_stack[arg_index++] = fin->buff->index;
+	arg_pos_stack[0] = fin->buff->index;
 	arg_token_stack[0] = token;
 	token_index[0] = fin->buff->index;
 	TOKEN end_token;
-	while (arg_index < func.var_count)
+	while (arg_index < func->var_count)
 	{
 		read_token();
 		/*In case a function is called within a function argument.
@@ -1544,8 +1523,6 @@ static void call_function(char *func_name)
 			while (right_cnt < left_cnt)
 			{
 				read_token();
-				if (token.class == TSTRING)
-					continue;
 				if (token.class == '(')
 					++left_cnt;
 				else if (token.class == ')')
@@ -1563,15 +1540,15 @@ static void call_function(char *func_name)
 	}
 
 	//We now work backwards, pushing the arguments onto the stack
-        while (--arg_index >= 0)
+	while (--arg_index >= 0)
 	{
-		OPERAND tmp = {.type = TREGISTER, .data_type = func.vars->data_type, .value = reg_alloc()};
+		OPERAND tmp = {.type = TREGISTER, .data_type = func->vars->data_type, .value = reg_alloc()};
 		sum += sizeof_data(tmp.data_type);
 		fin->buff->index = arg_pos_stack[arg_index];
 		token = arg_token_stack[arg_index];
 		fin->buff->index = token_index[arg_index];
 		parse_expression(&tmp);
-		if (arg_index == func.var_count - 1)
+		if (arg_index == func->var_count - 1)
 		{
 			end_pos = fin->buff->index;
 			end_token = token;
@@ -1582,11 +1559,15 @@ static void call_function(char *func_name)
 	if (end_pos != 0)
 		fin->buff->index = end_pos;
 	token = end_token;
-	//read_token();
 	CALL(func_name);
 	writec(9, SECT_CODE);
 	write_strn("ADD RSP, ", 9, SECT_CODE);
 	char tmp[100];
 	sprintf(tmp, "%d\n", sum);
 	write_str(tmp, SECT_CODE);
+
+	free(vars);
+	free(arg_pos_stack);
+	free(arg_token_stack);
+	free(token_index);
 }

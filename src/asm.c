@@ -898,7 +898,7 @@ void PUSH_OFF(int off, int off_type, char *base_ptr, int size, bool pos)
 	writec('\n', SECT_CODE);
 }
 
-void JMP(char *routine)
+void JMP(const char *routine)
 {
 	writec(9, SECT_CODE);
 	write_strn("JMP ", 4, SECT_CODE);
@@ -907,7 +907,7 @@ void JMP(char *routine)
 }
 
 //Jump if 0
-void JZ(char *routine)
+void JZ(const char *routine)
 {
 	writec(9, SECT_CODE);
 	write_strn("JZ ", 3, SECT_CODE);
@@ -916,7 +916,7 @@ void JZ(char *routine)
 }
 
 //Jump if !0
-void JNZ(char *routine)
+void JNZ(const char *routine)
 {
 	writec(9, SECT_CODE);
 	write_strn("JNZ ", 4, SECT_CODE);
@@ -925,7 +925,7 @@ void JNZ(char *routine)
 }
 
 //Jump if greater than (signed)
-void JG(char *routine)
+void JG(const char *routine)
 {
 	writec(9, SECT_CODE);
 	write_strn("JG ", 3, SECT_CODE);
@@ -934,7 +934,7 @@ void JG(char *routine)
 }
 
 //Jump if less than (signed)
-void JL(char *routine)
+void JL(const char *routine)
 {
 	writec(9, SECT_CODE);
 	write_strn("JL ", 3, SECT_CODE);
@@ -943,7 +943,7 @@ void JL(char *routine)
 }
 
 //Jump if greater than (unsigned)
-void JA(char *routine)
+void JA(const char *routine)
 {
 	writec(9, SECT_CODE);
 	write_strn("JA ", 3, SECT_CODE);
@@ -952,7 +952,7 @@ void JA(char *routine)
 }
 
 //Jump if greater than or equal to(unsigned)
-void JAE(char *routine)
+void JAE(const char *routine)
 {
 	writec(9, SECT_CODE);
 	write_strn("JAE ", 4, SECT_CODE);
@@ -961,7 +961,7 @@ void JAE(char *routine)
 }
 
 //Jump if less than (unsigned)
-void JB(char *routine)
+void JB(const char *routine)
 {
 	writec(9, SECT_CODE);
 	write_strn("JB ", 3, SECT_CODE);
@@ -970,7 +970,7 @@ void JB(char *routine)
 }
 
 //Jump if less than (unsigned)
-void JBE(char *routine)
+void JBE(const char *routine)
 {
 	writec(9, SECT_CODE);
 	write_strn("JBE ", 4, SECT_CODE);
@@ -978,7 +978,7 @@ void JBE(char *routine)
 	writec('\n', SECT_CODE);
 }
 //Jump if ==
-void JE(char *routine)
+void JE(const char *routine)
 {
 	writec(9, SECT_CODE);
 	write_strn("JE ", 3, SECT_CODE);
@@ -987,7 +987,7 @@ void JE(char *routine)
 }
 
 //Jump if !=
-void JNE(char *routine)
+void JNE(const char *routine)
 {
 	writec(9, SECT_CODE);
 	write_strn("JNE ", 4, SECT_CODE);
@@ -1045,7 +1045,7 @@ void CMP(REGISTER op1, OPERAND op2, int size)
 	writec('\n', SECT_CODE);
 }
 
-void CALL(char *routine)
+void CALL(const char *routine)
 {
 	writec(9, SECT_CODE);
 	write_strn("CALL ", 5, SECT_CODE);

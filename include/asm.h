@@ -140,19 +140,19 @@ void POP(int dest, int size);
 
 void PUSH_OFF(int off, int off_type, char *base_ptr, int size, bool pos);
 
-void JMP(char *routine);
-void JZ(char *routine);//if 0
-void JNZ(char *routine);//if !0
-void JG(char *routine);//if greater than (signed)
-void JL(char *routine);//if less than (signed)
-void JA(char *routine);//if greater than (unsigned)
-void JB(char *routine);//if less than (unsigned)
-void JE(char *routine);//if ==
-void JNE(char *routine);//if !=
-void JAE(char *routine);//if >=
-void JBE(char *routine);//if <=
+void JMP(const char *routine);
+void JZ(const char *routine);//if 0
+void JNZ(const char *routine);//if !0
+void JG(const char *routine);//if greater than (signed)
+void JL(const char *routine);//if less than (signed)
+void JA(const char *routine);//if greater than (unsigned)
+void JB(const char *routine);//if less than (unsigned)
+void JE(const char *routine);//if ==
+void JNE(const char *routine);//if !=
+void JAE(const char *routine);//if >=
+void JBE(const char *routine);//if <=
 void CMP(REGISTER op1, OPERAND op2, int size);//Left to right
-void CALL(char *routine);
+void CALL(const char *routine);
 
 void XOR_R64R64(REGISTER reg1, REGISTER reg2, int size1,  int size2);
 void XOR_R64I(REGISTER reg1, int immediate, int size);

@@ -96,11 +96,11 @@ static OPERAND *find_var_in_scope(SCOPE scope, char *id);
 static void add_function(FUNCTION *func);
 static FUNCTION* create_function(char *name, OPERAND *vars, int var_count, int type, unsigned int offset);
 
-static FUNCTION* find_function(char *name);
+static FUNCTION* find_function(const char *name);
 void free_functions(void);
 static void add_funcvar(FUNCTION *func, OPERAND var);
 
-static void call_function(char *func_name);
+static void call_function(const char *func_name);
 
 static void parse_loop(void);
 
