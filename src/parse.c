@@ -7,7 +7,7 @@
 
 static void MOVE(OPERAND dest, OPERAND src)
 {
-	if (dest.type == src.type && dest.value == src.value)
+	if (dest.type == src.type && dest.value == src.value && dest.data_type == src.data_type)
 		return;
 
 	else if (dest.type == TREGISTER)
@@ -144,7 +144,9 @@ normal:
 				}
 			}
 			else
+			{
 				unread_token();
+			}
 		}
 		else if (token.class == TKEYWORD && token.value == SIZEOF)
 		{
@@ -190,16 +192,20 @@ static void parse_prefix(OPERAND *dest)
 	{
 		OPERAND src;
 		src.data_type = /*(PTR(dest->data_type)) ? dest->data_type - 8 : */dest->data_type;
-		src.type = TOFFSET;
+		/*src.type = TOFFSET;
 		src.off_type = 0;
 		src.base_ptr = registers[reg_alloc()];
 		src.off = 0;
-		src.pos = 0;
+		src.pos = 0;*/
+		src.value = reg_alloc();
+		src.type = TREGISTER;
 		read_token();
 		parse_factor(&src);
 		if (dest->type == TREGISTER)
-			//MOV_R64D(dest->value, registers[src.value], sizeof_data(dest->data_type));
-			MOV_R64OFF(dest->value, src.off, src.off_type, src.base_ptr, sizeof_data(dest->data_type), src.pos);
+		{
+			//MOV_R64OFF(dest->value, src.off, src.off_type, src.base_ptr, sizeof_data(dest->data_type), src.pos);
+			MOV_R64R64deref(dest->value, src.value, sizeof_data(dest->data_type));
+		}
 		else  if (dest->type == TSEG_DATA || dest->type == TSEG_BSS)
 		{
 			OPERAND tmp;

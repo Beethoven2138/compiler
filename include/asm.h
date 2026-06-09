@@ -113,17 +113,20 @@ void reg_free(REGISTER reg);
 void MOV_R64R64(int dest, int src, int size);
 void MOV_R64I(int dest, int src, int size);
 
-void MOV_R64OFF(int dest, int off, int off_type, char *base_ptr, int size, bool pos);
-void MOV_OFFR64(int off, int off_type, char *base_ptr, int src, int size, bool pos);
-void MOV_OFFI(int off, int off_type, char *base_ptr, int src, int size, bool pos);
+// eg, MOV R15, [R14]
+void MOV_R64R64deref(int dest, int src, int size);
 
-void MOV_DR64(char *str, int src, int size);
-void MOV_R64D(int dest, char *src, int size);
-void MOV_DI(char *str, int src, int size);
+void MOV_R64OFF(int dest, int off, int off_type, const char *base_ptr, int size, bool pos);
+void MOV_OFFR64(int off, int off_type, const char *base_ptr, int src, int size, bool pos);
+void MOV_OFFI(int off, int off_type, const char *base_ptr, int src, int size, bool pos);
 
-void MOV_R64ADR(int dest, char *str, int size);
+void MOV_DR64(const char *str, int src, int size);
+void MOV_R64D(int dest, const char *src, int size);
+void MOV_DI(const char *str, int src, int size);
 
-void LEA(int dest, int off, int off_type, char *base_ptr, int size, bool pos);
+void MOV_R64ADR(int dest, const char *str, int size);
+
+void LEA(int dest, int off, int off_type, const char *base_ptr, int size, bool pos);
 
 void ADD_R64R64(int dest, int src, int size1, int size2);
 void ADD_R64I(int dest, int src, int size);
@@ -138,7 +141,7 @@ void DIV_R64(int src, int size);
 void PUSH(int src, int size);
 void POP(int dest, int size);
 
-void PUSH_OFF(int off, int off_type, char *base_ptr, int size, bool pos);
+void PUSH_OFF(int off, int off_type, const char *base_ptr, int size, bool pos);
 
 void JMP(const char *routine);
 void JZ(const char *routine);//if 0
