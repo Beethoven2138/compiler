@@ -1,6 +1,0 @@
-void main(void)
-{
-	uint64_t a = 5;
-	uint64_t *ptr = &a;
-	*ptr = 6;
-}
