@@ -23,6 +23,8 @@ int main(int argc, char *argv[])
 	parse_statement(TEOF);
 	free_functions();
 
+	write_str("_start:\n\tCALL main", SECT_CODE);
+	
 	write_to_file();
 
 	free(fin);
