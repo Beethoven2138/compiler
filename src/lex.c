@@ -447,11 +447,14 @@ redo:
 		break;
 	}
 	case 'm':
+	case 'n':
 	case 'a':
 	case 'd':
+	case 'g':
 	case 'h':
 	case 'j':
 	case 'k':
+	case 'l':
 	case 'o':
 	case 'p':
 	case 'q':
