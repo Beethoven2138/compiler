@@ -630,7 +630,7 @@ static void parse_assignment(OPERAND *dest)
 	}
 	else
 	{
-		read_token();
+		/*read_token();
 		dest->data_type -= 8;
 		parse_expression(dest);
 		dest->type = TOFFSET;
@@ -639,7 +639,16 @@ static void parse_assignment(OPERAND *dest)
 		dest->base_ptr = "0";
 		read_token();
 		parse_expression(dest);
-		reg_free(dest->off);
+		reg_free(dest->off);*/
+		OPERAND tmp = {.type = TREGISTER, .value = reg_alloc(), .data_type = dest->data_type-8};
+		OPERAND tmp_dest = {.type = TREGISTER, .value = reg_alloc(), .data_type = dest->data_type};
+		//MOVE(tmp_dest, *dest);
+		parse_expression(&tmp_dest);
+		read_token();
+		parse_expression(&tmp);
+		MOV_R64derefR64(tmp_dest.value, tmp.value, sizeof_data(tmp.data_type));
+		reg_free(tmp_dest.value);
+		reg_free(tmp.value);
 	}
 }
 
@@ -1143,29 +1152,6 @@ void parse_statement(int stop)
 		}
 		else if (token.class == TKEYWORD && token.value == UNION)
 		{
-			/*OPERAND *var;
-			read_token();read_token();
-			unsigned int data_type = 0;
-			while (!(token.class == '}' && token.class == '}'))
-			{
-				assert(token.class == TKEYWORD && token.value != STRUCT);
-				if (!var)
-				{
-					var = (OPERAND*)malloc(sizeof(OPERAND));
-				        add_variable(var, current_scope);
-				}
-				else
-				{
-					var->next = (OPERAND*)malloc(sizeof(OPERAND));
-					var = var->next;
-				}
-				var->next = NULL;
-				var->data_type = token.value;
-				read_token();
-				assert(token.class == TIDENTIFIER);
-				var->id = token.id;
-				read_token();
-				}*/
 		}
 		else if (token.class == TKEYWORD && token.value == EXTERN)
 		{
@@ -1194,10 +1180,11 @@ void parse_statement(int stop)
 			OPERAND tmp;
 			if (PTR(var->data_type))
 			{
-				tmp.type = TREGISTER;
+				/*tmp.type = TREGISTER;
 				tmp.data_type = var->data_type;
 				tmp.value = reg_alloc();
-				parse_assignment(&tmp);
+				parse_assignment(&tmp);*/
+				parse_assignment(var);
 			}
 			else
 				parse_assignment(var);
@@ -1216,23 +1203,7 @@ void parse_statement(int stop)
 			read_token();
 			if (token.class != ';')
 			{
-				/*OPERAND ret;
-				if (token.class == TIDENTIFIER)
-				{
-					ret = *find_var(current_scope, token.id);
-				}
-				/*
-				When a function returns a value,
-				the value is always placed in RAX
-				
-				OPERAND rax;
-				rax.type = TREGISTER;
-				rax.value = RAX;
-				rax.data_type = ret.data_type;
-				MOVE(rax, ret);*/
-				//OPERAND ret;
 				OPERAND rax = {.type = TREGISTER, .value = RAX, .data_type = current_scope->func->type};
-				//parse_expression(&rax);
 			        OPERAND tmp = {.type = TREGISTER, .data_type = current_scope->func->type, .value = reg_alloc()};
 				parse_expression(&tmp);
 				MOVE(rax, tmp);
@@ -1256,7 +1227,6 @@ void parse_statement(int stop)
 				writec(9, SECT_CODE);
 				func_epilog();
 			}
-			//read_token();
 		}
 		else if (token.class == TFUNCTION)
 		{

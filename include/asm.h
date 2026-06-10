@@ -116,6 +116,9 @@ void MOV_R64I(int dest, int src, int size);
 // eg, MOV R15, [R14]
 void MOV_R64R64deref(int dest, int src, int size);
 
+//eg, MOV [R15], R14
+void MOV_R64derefR64(int dest, int src, int size);
+
 void MOV_R64OFF(int dest, int off, int off_type, const char *base_ptr, int size, bool pos);
 void MOV_OFFR64(int off, int off_type, const char *base_ptr, int src, int size, bool pos);
 void MOV_OFFI(int off, int off_type, const char *base_ptr, int src, int size, bool pos);

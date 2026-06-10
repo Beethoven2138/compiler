@@ -23,3 +23,5 @@ _scope_end1:
 	MOV RDI, 0
 	syscall
 _scope_end0:
+_start:
+	CALL main

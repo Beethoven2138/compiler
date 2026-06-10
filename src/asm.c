@@ -221,6 +221,44 @@ void MOV_R64R64deref(int dest, int src, int size)
 	writec('\n', SECT_CODE);
 }
 
+void MOV_R64derefR64(int dest, int src, int size)
+{
+	writec(9, SECT_CODE);
+	write_strn("MOV [", 5, SECT_CODE);
+	switch (size)
+	{
+	case QWORD:
+		write_str(registers[dest], SECT_CODE);
+		break;
+	case DWORD:
+		write_str(registers32[dest], SECT_CODE);
+		break;
+	case WORD:
+		write_str(registers16[dest], SECT_CODE);
+		break;
+	case BYTE:
+		write_str(registers8[dest], SECT_CODE);
+		break;
+	}
+	write_strn("], ", 3, SECT_CODE);
+	switch (size)
+	{
+	case QWORD:
+		write_str(registers[src], SECT_CODE);
+		break;
+	case DWORD:
+		write_str(registers32[src], SECT_CODE);
+		break;
+	case WORD:
+		write_str(registers16[src], SECT_CODE);
+		break;
+	case BYTE:
+		write_str(registers8[src], SECT_CODE);
+		break;
+	}
+	writec('\n', SECT_CODE);
+}
+
 void MOV_R64OFF(int dest, int off, int off_type, const char *base_ptr, int size, bool pos)
 {
 	writec(9, SECT_CODE);
