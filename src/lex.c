@@ -6,7 +6,10 @@ void read_token()
 {
 	char c;
 	prev_token = token;
-	prev_index = fin->buff->index;
+	//prev_index = fin->buff->index;
+	prev_token.index = fin->buff->index;
+	if (token_list_length > 0)
+		token_list[token_list_index].index = fin->buff->index;
 redo:
 
 	c = readc();
@@ -536,10 +539,41 @@ redo:
 	printf("ERROR: UNKNOWN LEXIM\n");
 	assert(0);
 	}
+	append_token();
 }
 
 void unread_token()
 {
 	token = prev_token;
-	fin->buff->index = prev_index;
+	//fin->buff->index = prev_index;
+	fin->buff->index = prev_token.index;
+        if (token_list_index > 0)
+	{
+		--token_list_index;
+		if (token_list_index > 0)
+		{
+			prev_token = token_list[token_list_index-1];
+			//prev_index = prev_token.index;
+		}
+	}
+}
+
+static void append_token()
+{
+	if (token_list_length == 0)
+	{
+		token_list = (TOKEN*)malloc(100 * sizeof(TOKEN));
+		token_list_length = 100;
+		token_list[0] = token;
+		return;
+	}
+	else
+	{
+		if (token_list_index == token_list_length-1)
+		{
+			token_list = (TOKEN*)realloc(token_list, (token_list_length + 10) * sizeof(TOKEN));
+			token_list_length += 10;
+		}
+		token_list[++token_list_index] = token;
+	}
 }

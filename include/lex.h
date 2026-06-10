@@ -97,15 +97,21 @@ typedef struct
 		int value;//Also used as an index into a hash table for keywords
 		char *id;
 	};
+	int index;//current_token won't necessarily have this initialized
 } TOKEN;
 
 extern TOKEN token;
 extern TOKEN prev_token;
 
-static int prev_index;
+//static int prev_index;
 
+static TOKEN *token_list;
+static int token_list_length;
+int token_list_index;//index of the current token in token_list
 
 void read_token(void);
 void unread_token();
+
+static void append_token();
 
 #endif

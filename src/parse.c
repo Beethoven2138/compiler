@@ -583,6 +583,8 @@ static void parse_logic(OPERAND *dest)
 
 static void parse_assignment(OPERAND *dest)
 {
+	/*if (token.class == ';')
+	  return;*/
 	unread_token();
 	if (!(token.class == TOPERATOR && token.value == '*'))
 	{
@@ -593,7 +595,8 @@ static void parse_assignment(OPERAND *dest)
 		tmp.type = TREGISTER;
 		tmp.value = reg_alloc();
 		tmp.data_type = dest->data_type;
-		parse_expression(&tmp);
+		//parse_expression(&tmp);
+		parse_shift(&tmp);
 		MOVE(*dest, tmp);
 	}
 	else
@@ -632,11 +635,35 @@ static void parse_declaration(int flags)
 			}
 			else
 			{
-				var.base_ptr = spec_registers[RBP];
-				var.type = TOFFSET;
-				var.off = current_scope->offset;
-				var.off_type = TIMMEDIATE;
-				var.pos = false;
+				read_token();
+				if (token.class == '[')
+				{
+					var.data_type += 8;//since it's now a pointer;
+					var.base_ptr = spec_registers[RBP];
+					var.type = TOFFSET;
+					var.off = current_scope->offset;
+					var.off_type = TIMMEDIATE;
+					var.pos = false;
+					OPERAND arr_size = {.type = TREGISTER, .data_type = UINT64_T, .value = reg_alloc()};
+					read_token();
+					parse_expression(&arr_size);
+					read_token();
+					PUSH(RAX, 8);
+					MOV_R64I(RAX, sizeof_data(var.data_type-8), sizeof_data(UINT64_T));
+					MUL_R64(arr_size.value, sizeof_data(UINT64_T));
+					SUB_R64R64(RBP, RAX, 8, 8);
+					POP(RAX, 8);
+					reg_free(arr_size.value);
+				}
+				else
+				{
+					unread_token();
+					var.base_ptr = spec_registers[RBP];
+					var.type = TOFFSET;
+					var.off = current_scope->offset;
+					var.off_type = TIMMEDIATE;
+					var.pos = false;
+				}
 			}
 			add_variable(var, current_scope);
 			parse_assignment(&var);
@@ -780,6 +807,7 @@ scope:
 				int index = fin->buff->index;
 				TOKEN old_prev = prev_token;
 				TOKEN old = token;
+				int old_token_list_index = token_list_index;
 				while (right_cnt < left_cnt)
 				{
 					read_token();
@@ -793,6 +821,7 @@ scope:
 				fin->buff->index = index;
 				prev_token = old_prev;
 				token = old;
+				token_list_index = old_token_list_index;
 				current_scope->local_var_sum = local_vars_sum;
 				writec(9, SECT_CODE);
 				write_strn("SUB RSP, ", 9, SECT_CODE);
@@ -1389,6 +1418,8 @@ static void call_function(const char *func_name)
 	arg_token_stack[0] = token;
 	token_index[0] = fin->buff->index;
 	TOKEN end_token;
+	TOKEN end_prev_token;
+	int end_token_list_index;
 	while (arg_index < func->var_count)
 	{
 		read_token();
@@ -1432,13 +1463,17 @@ static void call_function(const char *func_name)
 		{
 			end_pos = fin->buff->index;
 			end_token = token;
+			end_token_list_index = token_list_index;
+			end_prev_token = prev_token;
 		}
 		PUSH(tmp.value, sizeof_data(tmp.data_type));
 		reg_free(tmp.value);
 	}
 	if (end_pos != 0)
 		fin->buff->index = end_pos;
+	prev_token = end_prev_token;
 	token = end_token;
+	token_list_index = end_token_list_index;
 	CALL(func_name);
 	writec(9, SECT_CODE);
 	write_strn("ADD RSP, ", 9, SECT_CODE);
