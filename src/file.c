@@ -79,7 +79,6 @@ File *make_file(char *name)
 	}
 	file->buff->str_len = file->buff->index + 1;
 	file->buff->index = 0;
-	//fclose(file->file);
 	return file;
 }
 
@@ -98,15 +97,13 @@ void unreadc(void)
 
 char* read_word(int index)
 {
-	char *str = (char*)malloc(sizeof(char) * 20);
+	char *str = (char*)malloc(sizeof(char) * 30);
 	char c;
 	int i;
-	for (i = 0; i < 20; i++)
+	for (i = 0; i < 30; i++)
 	{
 		c = fin->buff->text[index++];
-		if (c == ' ' || c == '\n' || c == '\r' || c == EOF || c == ';' || c == '(' || c == ')'
-		    || c == ']' || c == '[' || c == ',')
-		//TODO: Finish this
+		if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_'))
 		{
 			fin->buff->index = index-1;
 			str[i] = 0;
@@ -114,7 +111,7 @@ char* read_word(int index)
 		}
 		str[i] = c;
 	}
-	if (i < 19)
+	if (i < 29)
 	{
 		str[i+1] = 0;
 	}
@@ -126,13 +123,6 @@ void writec(char c, int section)
 	if (fout->buff[section].index == fout->buff[section].str_len)
 		fout->buff[section].text = realloc(fout->buff[section].text, ++fout->buff[section].str_len + 1);
 
-	//char *text = fout->buff[section].text;
-	//fout->buff[section].text[fout->buff[section].index] = c;
-/*
-	if (fout->buff[section].index != 0)
-		fout->buff[section].text = (char*)realloc(fout->buff[section].text, ++(fout->buff[section].index) + 1);
-	fout->buff[section].text[fout->buff[section].index] = c;
-*/
 	fout->buff[section].text[fout->buff[section].index++] = c;
 }
 
@@ -142,11 +132,7 @@ void write_strn(const char *str, int len, int section)
 	char *text = fout->buff[section].text;
 	fout->buff[section].text = (char*)realloc(fout->buff[section].text, len + fout->buff[section].index);
 	for (int i = 0; i < len; i++)
-	{
 		writec(str[i], section);
-		//fout->buff[section].text[fout->buff[section].index++] = *(str++);
-	}
-	//fout->buff[section].text[fout->buff[section].index++]++;
 }
 
 void write_str(const char *str, int section)

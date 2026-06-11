@@ -3,7 +3,7 @@ uint64_t data_var = 5;
 
 uint64_t test_func(uint64_t *arg)
 {
-	return *(arg - 2);
+	return *(arg-2);
 }
 
 void main(void)
