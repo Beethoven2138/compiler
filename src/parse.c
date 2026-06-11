@@ -25,10 +25,12 @@ static void MOVE(OPERAND dest, OPERAND src)
 		}
 		else if (src.type == TSEG_DATA || src.type == TSEG_BSS)
 		{
-			if (!PTR(dest.data_type))
+			if ((!PTR(dest.data_type) && !PTR(src.data_type)) || (PTR(dest.data_type) && PTR(src.data_type)))
 				MOV_R64D(dest.value, src.id, sizeof_data(src.data_type));
-			else
+			else if (PTR(dest.data_type) && !PTR(src.data_type))
 				MOV_R64ADR(dest.value, src.id, QWORD);
+			else
+				assert(0);
 		}
 	}
 	else if (dest.type == TOFFSET)
@@ -108,10 +110,7 @@ static void MOVE_deref(OPERAND dest, OPERAND src)
 		}
 		else if (src.type == TSEG_DATA || src.type == TSEG_BSS)
 		{
-			if (!PTR(dest.data_type))
-				MOV_R64D(dest.value, src.id, sizeof_data(src.data_type));
-			else
-				MOV_R64ADR(dest.value, src.id, QWORD);
+			MOV_R64D(dest.value, src.id, sizeof_data(src.data_type));
 		}
 	}
 	else if (dest.type == TOFFSET)
