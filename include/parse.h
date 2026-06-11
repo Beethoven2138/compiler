@@ -64,15 +64,16 @@ static SCOPE *current_scope;
 static FUNCTION_LIST func_list;
 
 static void MOVE(OPERAND dest, OPERAND src);
+static void MOVE_deref(OPERAND dest, OPERAND src);
 
-static void parse_factor(OPERAND *dest);
-static void parse_prefix(OPERAND *dest);
-static void parse_term(OPERAND *dest);
-static void parse_expression(OPERAND *dest);
-static void parse_shift(OPERAND *dest);
-static void parse_relation(OPERAND *dest);
-static void parse_logic(OPERAND *dest);
-static void parse_assignment(OPERAND *dest);
+static void parse_factor(OPERAND *dest, bool deref);
+static void parse_prefix(OPERAND *dest, bool deref);
+static void parse_term(OPERAND *dest, bool deref);
+static void parse_expression(OPERAND *dest, bool deref);
+static void parse_shift(OPERAND *dest, bool deref);
+static void parse_relation(OPERAND *dest, bool deref);
+static void parse_logic(OPERAND *dest, bool deref);
+static void parse_assignment(OPERAND *dest, bool deref);
 
 
 static void parse_declaration(int flags);

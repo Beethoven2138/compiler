@@ -577,3 +577,10 @@ static void append_token()
 		token_list[++token_list_index] = token;
 	}
 }
+
+
+void free_token_list()
+{
+	if (token_list_length > 0)
+		free(token_list);
+}

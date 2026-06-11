@@ -114,4 +114,6 @@ void unread_token();
 
 static void append_token();
 
+void free_token_list();
+
 #endif

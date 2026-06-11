@@ -110,6 +110,11 @@ void init_bss(BUFFER *text);
 REGISTER reg_alloc(void);
 void reg_free(REGISTER reg);
 
+
+void ADD_RSPR64(int src);
+void SUB_RSPR64(int src);
+
+
 void MOV_R64R64(int dest, int src, int size);
 void MOV_R64I(int dest, int src, int size);
 

@@ -689,6 +689,23 @@ void LEA(int dest, int off, int off_type, const char *base_ptr, int size, bool p
 	writec('\n', SECT_CODE);
 }
 
+void ADD_RSPR64(int src)
+{
+	writec(9, SECT_CODE);
+	write_strn("ADD RSP", 7, SECT_CODE);
+	write_strn(", ", 2, SECT_CODE);
+	write_str(registers[src], SECT_CODE);
+	writec('\n', SECT_CODE);
+}
+
+void SUB_RSPR64(int src)
+{
+	writec(9, SECT_CODE);
+	write_strn("SUB RSP", 7, SECT_CODE);
+	write_strn(", ", 2, SECT_CODE);
+	write_str(registers[src], SECT_CODE);
+	writec('\n', SECT_CODE);
+}
 
 void ADD_R64R64(int dest, int src, int size1, int size2)
 {
