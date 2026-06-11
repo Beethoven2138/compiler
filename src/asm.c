@@ -1515,6 +1515,8 @@ void write_to_file(void)
  */
 int sizeof_data(int data_type)
 {
+	if (data_type >= 16)
+		data_type -= 8;
 	if (data_type <= VOID)
 	{
 		switch (data_type)

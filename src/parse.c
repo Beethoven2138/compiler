@@ -1362,7 +1362,7 @@ void parse_statement(int stop)
 			read_token();
 			OPERAND tmp_ptr = {.data_type = UINT64_PTR_T, .type = TREGISTER, .value = reg_alloc()};
 			parse_factor(&tmp_ptr, true);
-			OPERAND r_tmp = {.data_type = tmp_ptr.data_type - 8, .type = TREGISTER, .value = reg_alloc()};
+			OPERAND r_tmp = {.data_type = tmp_ptr.data_type, .type = TREGISTER, .value = reg_alloc()};
 			read_token();
 			parse_assignment(&r_tmp, false);//CHECK THIS
 			MOV_R64derefR64(tmp_ptr.value, r_tmp.value, sizeof_data(tmp_ptr.data_type));
