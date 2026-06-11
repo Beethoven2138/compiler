@@ -23,7 +23,7 @@ _scope_start1:
 	ADD R12, RAX
 	POP RAX
 	MOV R13, R12
-	LEA R10, [RBP-24]
+	MOV R10, [RBP-24]
 	MOV R9, 7
 	PUSH RAX
 	MOV RAX, 8

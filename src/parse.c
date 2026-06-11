@@ -1364,7 +1364,7 @@ void parse_statement(int stop)
 			parse_factor(&tmp_ptr, true);
 			OPERAND r_tmp = {.data_type = tmp_ptr.data_type, .type = TREGISTER, .value = reg_alloc()};
 			read_token();
-			parse_assignment(&r_tmp, false);//CHECK THIS
+			parse_assignment(&r_tmp, true);//CHECK THIS
 			MOV_R64derefR64(tmp_ptr.value, r_tmp.value, sizeof_data(tmp_ptr.data_type));
 			reg_free(tmp_ptr.value);
 			reg_free(r_tmp.value);
