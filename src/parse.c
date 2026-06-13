@@ -826,22 +826,30 @@ static void parse_declaration(int flags)
 				read_token();
 				if (token.class == '[')
 				{
-					var.data_type += 8;//since it's now a pointer;
+					/* To handle stack-based arrays, for simplicity, we introduce a pointer
+					   just below the array, and have it point to the beginning of the array.
+					   This way, we don't need to introduce a special array type; instead we
+					   can view arrays as simply ordinary pointers. We also note that the
+					   beginning of the array is the smallest memory adress, since that way
+					   pointer arithmetic works nicely.
+					 */
+					read_token();
+					assert(token.class == TNUMBER);
+					int old_type = var.data_type;
+				        var.type = TOFFSET;
+					var.data_type = (var.data_type < 8) ? var.data_type + 8 : var.data_type;
 					var.base_ptr = spec_registers[RBP];
-					var.type = TOFFSET;
-					var.off = current_scope->offset;
 					var.off_type = TIMMEDIATE;
+					var.off = current_scope->offset + token.value * sizeof_data(old_type);
 					var.pos = false;
-					OPERAND arr_size = {.type = TREGISTER, .data_type = UINT64_T, .value = reg_alloc()};
+					OPERAND arr_ptr = {.type = TREGISTER, .data_type = var.data_type, .value = reg_alloc()};
+					LEA(arr_ptr.value, current_scope->offset + (token.value-1) * sizeof_data(old_type),
+					    TIMMEDIATE, spec_registers[RBP], 8, false);
+					MOV_OFFR64(var.off, var.off_type, var.base_ptr, arr_ptr.value, 8, false);
+					current_scope->offset += token.value * sizeof_data(old_type);
 					read_token();
-					parse_expression(&arr_size, false);
 					read_token();
-					PUSH(RAX, 8);
-					MOV_R64I(RAX, sizeof_data(var.data_type-8), sizeof_data(UINT64_T));
-					MUL_R64(arr_size.value, sizeof_data(UINT64_T));
-					SUB_RSPR64(RAX);
-					POP(RAX, 8);
-					reg_free(arr_size.value);
+					reg_free(arr_ptr.value);
 					skip = true;
 				}
 				else
@@ -1005,6 +1013,7 @@ scope:
 				TOKEN old_prev = prev_token;
 				TOKEN old = token;
 				int old_token_list_index = token_list_index;
+				int last_data_type_size = 0;
 				while (right_cnt < left_cnt)
 				{
 					read_token();
@@ -1013,7 +1022,19 @@ scope:
 					else if (token.class == '}')
 						++right_cnt;
 					else if (token.class == TKEYWORD && token.value < STRUCT)
+					{
 						local_vars_sum += sizeof_data(token.value);
+						last_data_type_size = sizeof_data(token.value);
+					}
+					else if (token.class == '[')
+					{
+						read_token();
+						assert(token.class == TNUMBER);
+						local_vars_sum += token.value * last_data_type_size;
+						if (last_data_type_size < 8)
+							local_vars_sum += 8;
+						read_token();
+					}
 				}
 				fin->buff->index = index;
 				prev_token = old_prev;
