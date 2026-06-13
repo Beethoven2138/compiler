@@ -15,7 +15,15 @@ static void MOVE(OPERAND dest, OPERAND src)
 		if (src.type == TIMMEDIATE)
 			MOV_R64I(dest.value, src.value, sizeof_data(dest.data_type));
 		else if (src.type == TREGISTER)
-			MOV_R64R64(dest.value, src.value, sizeof_data(dest.data_type));
+		{
+			if ((!PTR(dest.data_type) && !PTR(src.data_type)) || (PTR(dest.data_type) && PTR(src.data_type)))
+				MOV_R64R64(dest.value, src.value, sizeof_data(dest.data_type));
+			else if (PTR(dest.data_type) && !PTR(src.data_type))//HMM.....
+				MOV_R64derefR64(dest.value, src.value, 8);
+			else
+				MOV_R64R64deref(dest.value, src.value, 8);
+			//MOV_R64R64(dest.value, src.value, sizeof_data(dest.data_type));
+		}
 		else if (src.type == TOFFSET)
 		{
 			if (!PTR(dest.data_type))
@@ -27,10 +35,10 @@ static void MOVE(OPERAND dest, OPERAND src)
 		{
 			if ((!PTR(dest.data_type) && !PTR(src.data_type)) || (PTR(dest.data_type) && PTR(src.data_type)))
 				MOV_R64D(dest.value, src.id, sizeof_data(src.data_type));
-			else if (PTR(dest.data_type) && !PTR(src.data_type))
+			else/* if (PTR(dest.data_type) && !PTR(src.data_type))*/
 				MOV_R64ADR(dest.value, src.id, QWORD);
-			else
-				assert(0);
+			/*else
+			  assert(0);*/
 		}
 	}
 	else if (dest.type == TOFFSET)
@@ -103,14 +111,32 @@ static void MOVE_deref(OPERAND dest, OPERAND src)
 		if (src.type == TIMMEDIATE)
 			MOV_R64I(dest.value, src.value, sizeof_data(dest.data_type));
 		else if (src.type == TREGISTER)
-			MOV_R64R64(dest.value, src.value, sizeof_data(dest.data_type));
+		{
+			if ((!PTR(dest.data_type) && !PTR(src.data_type)) || (PTR(dest.data_type) && PTR(src.data_type)))
+				MOV_R64R64(dest.value, src.value, sizeof_data(dest.data_type));
+			else if (PTR(dest.data_type) && !PTR(src.data_type))//HMM.....
+				MOV_R64derefR64(dest.value, src.value, 8);
+			else
+				MOV_R64R64deref(dest.value, src.value, 8);
+			//MOV_R64R64(dest.value, src.value, sizeof_data(dest.data_type));
+		}
 		else if (src.type == TOFFSET)
 		{
 			MOV_R64OFF(dest.value, src.off, src.off_type, src.base_ptr, sizeof_data(dest.data_type), src.pos);
 		}
+		/*
 		else if (src.type == TSEG_DATA || src.type == TSEG_BSS)
 		{
 			MOV_R64D(dest.value, src.id, sizeof_data(src.data_type));
+			}*/
+		else if (src.type == TSEG_DATA || src.type == TSEG_BSS)
+		{
+			if ((!PTR(dest.data_type) && !PTR(src.data_type)) || (PTR(dest.data_type) && PTR(src.data_type)))
+				MOV_R64D(dest.value, src.id, sizeof_data(src.data_type));
+			else/* if (PTR(dest.data_type) && !PTR(src.data_type))*/
+				MOV_R64ADR(dest.value, src.id, QWORD);
+			/*else
+			  assert(0);*/
 		}
 	}
 	else if (dest.type == TOFFSET)
@@ -277,7 +303,8 @@ static void parse_prefix(OPERAND *dest, bool deref)
 	{
 		OPERAND src;
 		//src.data_type = dest->data_type;//or maybe it should be dest->data_type + 8?
-		src.data_type = dest->data_type + 8;//we'll try...
+		//src.data_type = dest->data_type + 8;//we'll try...
+		src.data_type = (dest->data_type < 8) ? dest->data_type + 8 : dest->data_type;
 		src.value = reg_alloc();
 		src.type = TREGISTER;
 		read_token();
@@ -411,6 +438,7 @@ static void parse_expression(OPERAND *dest, bool deref)
 			}
 			else
 			{
+				PUSH(RDX, 8);
 				PUSH(RAX, 8);
 				MOV_R64I(RAX, sizeof_data(dest->data_type - 8), 8);
 				MUL_R64(operand.value, 8);
@@ -429,6 +457,7 @@ static void parse_expression(OPERAND *dest, bool deref)
 				else
 					assert(0);
 				POP(RAX, 8);
+				POP(RDX, 8);
 			}
 			reg_free(operand.value);
 		}
@@ -457,6 +486,7 @@ static void parse_expression(OPERAND *dest, bool deref)
 			}
 			else
 			{
+				PUSH(RDX, 8);
 				PUSH(RAX, 8);
 				MOV_R64I(RAX, sizeof_data(dest->data_type - 8), 8);
 				MUL_R64(operand.value, 8);
@@ -475,6 +505,7 @@ static void parse_expression(OPERAND *dest, bool deref)
 				else
 					assert(0);
 				POP(RAX, 8);
+				POP(RDX, 8);
 			}
 			reg_free(operand.value);
 		}
@@ -725,7 +756,10 @@ static void parse_assignment(OPERAND *dest, bool deref)
 	if (!(token.class == TOPERATOR && token.value == '*'))
 	{
 		read_token();
-		parse_factor(dest, false);
+		//parse_factor(dest, false);
+		parse_expression(dest, deref);
+		if (token.class == ';' || token.class == '}')
+			return;
 		read_token();
 		if (token.class != ';' && token.class != '}')
 		{
@@ -740,7 +774,8 @@ static void parse_assignment(OPERAND *dest, bool deref)
 	}
 	else
 	{
-		OPERAND tmp = {.type = TREGISTER, .value = reg_alloc(), .data_type = dest->data_type-8};
+		//OPERAND tmp = {.type = TREGISTER, .value = reg_alloc(), .data_type = dest->data_type-8};don't think that's right...
+		OPERAND tmp = {.type = TREGISTER, .value = reg_alloc(), .data_type = dest->data_type - 8};
 		OPERAND tmp_dest = {.type = TREGISTER, .value = reg_alloc(), .data_type = dest->data_type};
 		parse_expression(&tmp_dest, deref);
 		read_token();
@@ -750,6 +785,7 @@ static void parse_assignment(OPERAND *dest, bool deref)
 		reg_free(tmp.value);
 	}
 }
+
 
 static void parse_declaration(int flags)
 {
@@ -852,7 +888,7 @@ static void parse_declaration(int flags)
 					size = token.value;
 					read_token();
 					add_bss(var.id, var.data_type, size, flags & 0x1);
-					var.data_type += 8;
+					//var.data_type += 8;
 				}
 				else
 					add_bss(var.id, var.data_type, size, flags & 0x1);
@@ -1362,9 +1398,20 @@ void parse_statement(int stop)
 			read_token();
 			OPERAND tmp_ptr = {.data_type = UINT64_PTR_T, .type = TREGISTER, .value = reg_alloc()};
 			parse_factor(&tmp_ptr, true);
-			OPERAND r_tmp = {.data_type = tmp_ptr.data_type, .type = TREGISTER, .value = reg_alloc()};
+			//OPERAND r_tmp = {.data_type = tmp_ptr.data_type, .type = TREGISTER, .value = reg_alloc()};
+			OPERAND r_tmp = {.data_type = (tmp_ptr.data_type < 8) ? tmp_ptr.data_type : tmp_ptr.data_type - 8,
+				         .type = TREGISTER, .value = reg_alloc()};
 			read_token();
-			parse_assignment(&r_tmp, true);//CHECK THIS
+			if (token.class == TOPERATOR && token.value == '*')
+			{
+				//read_token();
+				r_tmp.data_type += 8;
+				parse_assignment(&r_tmp, true);
+				if (r_tmp.data_type < 8)
+					MOV_R64R64deref(r_tmp.value, r_tmp.value, 8);
+			}
+			else
+				parse_assignment(&r_tmp, true);//CHECK THIS	
 			MOV_R64derefR64(tmp_ptr.value, r_tmp.value, sizeof_data(tmp_ptr.data_type));
 			reg_free(tmp_ptr.value);
 			reg_free(r_tmp.value);
