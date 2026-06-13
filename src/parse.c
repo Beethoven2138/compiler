@@ -351,12 +351,16 @@ static void parse_term(OPERAND *dest, bool deref)
 			operand.data_type = dest->data_type;
 			parse_factor(&operand, deref);
 			OPERAND tmp;
+			PUSH(RDX, 8);
+			PUSH(RAX, 8);
 			tmp.type = TREGISTER;
 			tmp.value = RAX;
 			tmp.data_type = dest->data_type;
 			MOVE(tmp, *dest);
 			MUL_R64(operand.value, sizeof_data(dest->data_type));
 			MOVE(*dest, tmp);
+			POP(RAX, 8);
+			POP(RDX, 8);
 			reg_free(operand.value);
 		}
 		else if (token.value == '/')
@@ -368,12 +372,16 @@ static void parse_term(OPERAND *dest, bool deref)
 			operand.data_type = dest->data_type;
 			parse_factor(&operand, deref);
 			OPERAND tmp;
+			PUSH(RDX, 8);
+			PUSH(RAX, 8);
 			tmp.type = TREGISTER;
 			tmp.value = RAX;
 			tmp.data_type = dest->data_type;
 			MOVE(tmp, *dest);
 			DIV_R64(operand.value, sizeof_data(operand.data_type));
 			MOVE(*dest, tmp);
+			POP(RAX, 8);
+			POP(RDX, 8);
 			reg_free(operand.value);
 		}
 		else if (token.value == '%')
@@ -385,6 +393,8 @@ static void parse_term(OPERAND *dest, bool deref)
 			operand.data_type = dest->data_type;
 			parse_factor(&operand, deref);
 			OPERAND tmp;
+			PUSH(RDX, 8);
+			PUSH(RAX, 8);
 			tmp.type = TREGISTER;
 			tmp.value = RAX;
 			tmp.data_type = dest->data_type;
@@ -393,6 +403,8 @@ static void parse_term(OPERAND *dest, bool deref)
 			//The remainder of a division is stored in RDX
 			tmp.value = RDX;
 			MOVE(*dest, tmp);
+			POP(RAX, 8);
+			POP(RDX, 8);
 			reg_free(operand.value);
 		}
 	}

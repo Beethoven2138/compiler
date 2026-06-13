@@ -101,9 +101,13 @@ _scope_start7:
 	MOV R11, R10
 	MOV R10, [RBP-16]
 	MOV R9, 3
+	PUSH RDX
+	PUSH RAX
 	MOV RAX, R10
 	MUL R9
 	MOV R10, RAX
+	POP RAX
+	POP RDX
 	MOV [R11], R10
 _scope_end7:
 _scope_start8:
