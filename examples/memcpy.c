@@ -1,7 +1,7 @@
 uint64_t arr1[10];
 uint64_t arr2[5];
 
-uint64_t memcpy(uint64_t *dest, uint64_t *src, uint64_t length)
+uint64_t memcpy64(uint64_t *dest, uint64_t *src, uint64_t length)
 {
 	for (uint64_t i = 0; i < length; i = i + 1)
 	{
@@ -16,5 +16,5 @@ void main(void)
 	{
 		*(arr2 + i) = i * 3;
 	}
-	uint64_t ret = memcpy(arr1, arr2, 5);
+	uint64_t ret = memcpy64(arr1, arr2, 5);
 }
