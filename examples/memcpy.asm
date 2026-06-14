@@ -5,7 +5,7 @@ section .bss
 section .text
 	global _start
 _scope_start0:
-memcpy:
+memcpy64:
 	PUSH RBP
 	MOV RBP, RSP
 	PUSH RBX
@@ -125,7 +125,7 @@ _loop_end1:
 	MOV R8, arr1
 	MOV R9, R8
 	PUSH R9
-	CALL memcpy
+	CALL memcpy64
 	ADD RSP, 24
 	MOV R10, RAX
 	MOV [RBP-16], R10
