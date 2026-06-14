@@ -13,11 +13,11 @@ memcpy64:
 _scope_start1:
 _scope_start2:
 	XOR R15, R15
-	MOV [RBP-16], R15
+	MOV [RBP-16], R15	;i = 0;
 _scope_end2:
 _loop0:
 	MOV R14, [RBP-16]
-	MOV R13, [RBP+32]
+	MOV R13, [RBP+32]	;R13 = length
 	CMP R14, R13
 	JAE _rif_0
 	MOV R14, 1
@@ -128,7 +128,7 @@ _loop_end1:
 	CALL memcpy64
 	ADD RSP, 24
 	MOV R10, RAX
-	MOV [RBP-16], R10
+	MOV [RBP-16], R10	;ret = memcpy64(arr1, arr2, 5);
 _scope_end5:
 	MOV RAX, 60
 	MOV RDI, 0
