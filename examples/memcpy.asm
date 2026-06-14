@@ -17,7 +17,7 @@ _scope_start2:
 _scope_end2:
 _loop0:
 	MOV R14, [RBP-16]
-	MOV R13, [RBP+32]	;R13 = length
+	MOV R13, [RBP+32]	;R13 = length;
 	CMP R14, R13
 	JAE _rif_0
 	MOV R14, 1
@@ -28,8 +28,8 @@ _rend_0:
 	CMP R14, 1
 	JNE _loop_end0
 _scope_start3:
-	MOV R12, [RBP+16]
-	MOV R11, [RBP-16]
+	MOV R12, [RBP+16]	;R12 = dest;
+	MOV R11, [RBP-16]	;R11 = i;
 	PUSH RDX
 	PUSH RAX
 	MOV RAX, 8
