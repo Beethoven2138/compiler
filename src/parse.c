@@ -1582,9 +1582,18 @@ static OPERAND* find_var_in_scope(SCOPE scope, char *id)
 static void add_function(FUNCTION *func)
 {
 	if (func_list.index == func_list.length)
-		func_list.funcs = realloc(func_list.funcs, (func_list.length + 1)*sizeof(FUNCTION*));
-	func_list.length++;
-
+	{
+		if (func_list.length == 0)
+		{
+			func_list.funcs = (FUNCTION**)malloc(5*sizeof(FUNCTION*));
+			func_list.length = 5;
+		}
+		else
+		{
+			func_list.length *= 2;
+			func_list.funcs = (FUNCTION**)realloc(func_list.funcs, func_list.length * sizeof(FUNCTION*));
+		}
+	}
 	func_list.funcs[func_list.index++] = func;
 }
 
@@ -1601,7 +1610,7 @@ static FUNCTION* create_function(char *name, OPERAND *vars, int var_count, int t
 
 static FUNCTION* find_function(const char *name)
 {
-	for (int i = 0; i < func_list.length; i++)
+	for (int i = 0; i < func_list.index; i++)
 	{
 		if (!strcmp(name, func_list.funcs[i]->name))
 			return func_list.funcs[i];
@@ -1611,7 +1620,7 @@ static FUNCTION* find_function(const char *name)
 
 void free_functions(void)
 {
-	for (int i = 0; i < func_list.length; i++)
+	for (int i = 0; i < func_list.index; i++)
 	{
 		free(func_list.funcs[i]->name);
 		free(func_list.funcs[i]->vars);
@@ -1696,7 +1705,6 @@ static void call_function(const char *func_name)
 	{
 		OPERAND tmp = {.type = TREGISTER, .data_type = func->vars->data_type, .value = reg_alloc()};
 		sum += sizeof_data(tmp.data_type);
-		fin->buff->index = arg_pos_stack[arg_index];
 		token = arg_token_stack[arg_index];
 		fin->buff->index = token_index[arg_index];
 		parse_expression(&tmp, false);
